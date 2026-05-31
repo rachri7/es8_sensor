@@ -1,0 +1,32 @@
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.log
+*.out
+*.tdo
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.nav
+*.snm
+*.vrb
+*.idx
+*.ilg
+*.ind
+*.loa
+
+# Zip archives (uncomment if you want to exclude)
+# *.zip
+
+# Claude Code internal settings
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db

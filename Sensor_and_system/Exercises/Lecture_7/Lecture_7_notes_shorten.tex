@@ -1,0 +1,641 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage[T1]{fontenc}
+\usepackage{tikz}
+\usepackage{listings}
+\usetikzlibrary{arrows.meta}
+
+% ── Graphics path ─────────────────────────────────────────────────────────────
+\graphicspath{{../../Images_for_latex/Lecture_7/}}
+
+% ── Colours ───────────────────────────────────────────────────────────────────
+\definecolor{keyblue}{RGB}{30, 80, 160}
+\definecolor{keybluebg}{RGB}{220, 235, 255}
+\definecolor{noteorange}{RGB}{200, 100, 0}
+\definecolor{noteorangebg}{RGB}{255, 240, 215}
+\definecolor{warnred}{RGB}{180, 30, 30}
+\definecolor{warnredbg}{RGB}{255, 220, 220}
+\definecolor{defgreen}{RGB}{20, 110, 50}
+\definecolor{defgreenbg}{RGB}{215, 245, 225}
+\definecolor{headernavy}{RGB}{25, 35, 90}
+
+% ── Box environments ──────────────────────────────────────────────────────────
+\newmdenv[linecolor=keyblue,backgroundcolor=keybluebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{keybox}
+
+\newmdenv[linecolor=noteorange,backgroundcolor=noteorangebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{notebox}
+
+\newmdenv[linecolor=warnred,backgroundcolor=warnredbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{warnbox}
+
+\newmdenv[linecolor=defgreen,backgroundcolor=defgreenbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{defbox}
+
+% ── Section formatting ────────────────────────────────────────────────────────
+\titleformat{\section}[block]{\large\bfseries\color{headernavy}}{}{0pt}{}
+  [\vspace{2pt}\rule{\linewidth}{0.8pt}\vspace{4pt}]
+\titleformat{\subsection}[block]{\normalsize\bfseries\color{keyblue}}{}{0pt}{}
+
+% ── Document ──────────────────────────────────────────────────────────────────
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries\color{headernavy} Sensors \& Systems --- Lecture 7 Notes}\\[4pt]
+  {\large Ranging-based Sensors: LiDAR, Radar, Sonar}\\[2pt]
+  {\normalsize Jan Bendtsen, Torben Knudsen \quad|\quad Electronic Systems, 8th Semester}
+\end{center}
+
+\vspace{4pt}
+\hrule height 1.2pt
+\vspace{12pt}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Sensor Overview --- Where to Use What}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{p{2cm} p{2.5cm} p{2.5cm} p{2.5cm} p{4cm}}
+  \toprule
+  \textbf{Sensor} & \textbf{Wave} & \textbf{Range} & \textbf{Resolution} & \textbf{Best use / weakness} \\
+  \midrule
+  Sonar  & Sound         & Medium (water) & Moderate   & Underwater only; radio/light absorbed in water \\
+  Radar  & Radio (mm--cm)& Long (km)      & Low--Med   & All weather, measures radial velocity via Doppler; poor spatial resolution \\
+  LiDAR  & Laser (near-IR)& Short--Med    & Very high  & Sub-cm point clouds; fails in fog/rain; no colour \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{notebox}
+  \textbf{Sensor fusion} is used when no single sensor covers all needs.
+  Autonomous vehicles combine all three: Radar handles adverse weather and
+  measures velocity; LiDAR maps 3D geometry precisely; Camera reads colour,
+  text, and signs. Each fills the blind spots of the others.
+  Where only one medium is viable (e.g.\ underwater), a single sensor suffices
+  --- active sonar is the only practical ranging method in water.
+\end{notebox}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Pulsed vs.\ Phased LiDAR}
+% ══════════════════════════════════════════════════════════════════════════════
+
+Both methods exploit the finite speed of light $c \approx 3\times10^8$\,m/s but
+extract distance differently.
+
+\subsection*{Pulsed LiDAR --- time of flight}
+
+Fire a short pulse ($<50$\,ns), start a timer, stop when echo returns.
+Round-trip covers $2R$, so:
+\[
+  R = \frac{1}{2}\,c\,t
+\]
+Distance resolution is set by the clock interval $\Delta t$:
+\[
+  \Delta R = \frac{1}{2}\,c\,\Delta t
+  \qquad \text{e.g.\ } \Delta t = 1\,\text{ns} \;\Rightarrow\; \Delta R = 15\,\text{cm}
+\]
+
+\subsection*{Phased (continuous-wave) LiDAR --- phase comparison}
+
+Emit a sinusoidally modulated beam at frequency $f$.
+The round-trip delay appears as a phase shift $\varphi$:
+\[
+  \frac{t}{T} = \frac{\varphi}{2\pi}
+  \;\Longrightarrow\;
+  R = \frac{1}{2}c\,\frac{T\varphi}{2\pi}
+    = \frac{c}{4\pi f}\,\varphi
+    = \frac{\lambda}{4\pi}\,\varphi
+\]
+where $\lambda = c/f$ is the \emph{modulation} wavelength (not the laser's
+optical wavelength). Maximum unambiguous range is $R_{\max} = \lambda/2$
+--- beyond this the phase wraps and distances become indistinguishable.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+  \toprule
+  & \textbf{Pulsed} & \textbf{Phased} \\
+  \midrule
+  Range from      & Time of flight $t$          & Phase shift $\varphi$ \\
+  Formula         & $R = \tfrac{1}{2}ct$        & $R = \tfrac{\lambda}{4\pi}\varphi$ \\
+  Range limit     & Laser power / atmosphere    & Modulation wavelength ($\lambda/2$) \\
+  Typical range   & Long ($>100$\,m)            & Shorter ($\sim1$--$100$\,m) \\
+  Precision       & Moderate ($\sim$cm)         & Higher (sub-mm possible) \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{notebox}
+  \textbf{Why phased LiDAR is more precise.}
+  Pulsed systems measure nanosecond time intervals --- 1\,ns clock gives
+  only $\Delta R = 15$\,cm. Phased systems measure a phase angle, which
+  electronics can resolve to fractions of a degree, giving sub-mm precision
+  at short range. The cost is the limited unambiguous range $\lambda/2$.
+
+  \textbf{Design rule} for phased LiDAR: choose modulation frequency $f$ so
+  that $\lambda/2$ exceeds the furthest expected target:
+  \[
+    f < \frac{c}{2\,R_{\max,\text{expected}}}
+  \]
+  Lower $f$ $\rightarrow$ longer $\lambda$ $\rightarrow$ larger range but coarser phase
+  ruler $\rightarrow$ worse precision. This is the core trade-off.
+\end{notebox}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Ranging Precision}
+% ══════════════════════════════════════════════════════════════════════════════
+
+Precision is the standard deviation $\sigma$ of the distance estimate.
+It scales with the signal-to-noise ratio (SNR):
+\[
+  \sigma_{\text{pulse}} \propto \frac{c}{2}\,t_{\text{rise}}
+    \sqrt{\frac{B_{\text{pulse}}}{P_{\text{peak}}}},
+  \qquad
+  \sigma_{\text{phase}} \propto \frac{\lambda}{4\pi}
+    \sqrt{\frac{B_{\text{cw}}}{P_{\text{av}}}}
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{p{1.5cm} p{3.5cm} p{7cm}}
+  \toprule
+  \textbf{Symbol} & \textbf{Name} & \textbf{Effect on precision} \\
+  \midrule
+  $t_{\text{rise}}$ & Rise time of pulse   & Shorter edge $\rightarrow$ sharper timing $\rightarrow$ better \\
+  $\lambda$          & Modulation wavelength & Shorter $\rightarrow$ finer phase ruler $\rightarrow$ better \\
+  $B$                & Noise bandwidth       & Wider $\rightarrow$ more noise $\rightarrow$ worse \\
+  $P$                & Received power        & More power $\rightarrow$ better SNR $\rightarrow$ better \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Key insight: $\sigma \propto \sqrt{B/P}$ --- to halve $\sigma$ you need to
+quadruple received power or quarter the noise bandwidth.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{LiDAR Scattering Model --- Received Power}
+% ══════════════════════════════════════════════════════════════════════════════
+
+The received power follows a four-step chain from laser to receiver:
+
+\[
+  P_R = P_t \cdot
+        \underbrace{\frac{A_S}{A_{\text{laser}}}}_{\text{fraction hitting target}}
+        \cdot\;
+        \underbrace{\rho}_{\text{reflectance}}
+        \cdot\;
+        \underbrace{\frac{1}{\Omega R^2}\cdot\frac{\pi D_r^2}{4}}_{\text{fraction captured by receiver}}
+        \cdot\;
+        \underbrace{\eta_{\text{atm}}\,\eta_{\text{sys}}}_{\text{efficiency losses}}
+\]
+
+Substituting the footprint area $A_{\text{laser}} = \pi R^2 \beta_t^2/4$
+(which grows as $R^2$) gives the full range equation:
+\[
+  P_R = \frac{4P_t}{\pi R^2 \beta_t^2}\cdot\rho A_S\cdot
+        \frac{1}{\Omega R^2}\cdot\frac{\pi D_r^2}{4}\cdot\eta_{\text{atm}}\eta_{\text{sys}}
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{p{1.2cm} p{3cm} p{8cm}}
+  \toprule
+  \textbf{Symbol} & \textbf{Name} & \textbf{Meaning} \\
+  \midrule
+  $P_t$             & Transmitted power    & Total laser pulse power \\
+  $R$               & Range                & Distance to target \\
+  $\beta_t$         & Beam divergence      & Half-angle of emitted cone; wider = larger footprint \\
+  $A_S$             & Scatterer area       & Effective reflecting area of target \\
+  $\rho$            & Reflectance          & Fraction of incident power reflected (0--1) \\
+  $\Omega$          & Solid angle          & Cone into which target disperses power \\
+  $D_r$             & Receiver diameter    & Aperture of sensor lens \\
+  $\eta_{\text{atm}}$ & Atmospheric efficiency & Loss from absorption/scattering in air \\
+  $\eta_{\text{sys}}$ & System efficiency    & Loss in sensor optics and electronics \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{warnbox}
+  \textbf{The $R^4$ penalty.} $P_R \propto 1/R^4$ --- one $1/R^2$ from the
+  footprint growing (less power hits the target) and another $1/R^2$ from the
+  scattered power spreading before the receiver catches its slice.
+  Doubling range reduces returned power by $\mathbf{16\times}$.
+  This is why long-range LiDAR requires powerful lasers and sensitive detectors.
+\end{warnbox}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Noise Model for LiDAR Measurements}
+% ══════════════════════════════════════════════════════════════════════════════
+
+Each point cloud measurement $(d_{i,k},\alpha_{i,k})$ is affected by independent
+zero-mean Gaussian noise:
+\[
+  \tilde{S}_k = \bigl(\bar{d}_{i,k} + \nu_{d,k},\;\bar{\alpha}_{i,k} + \nu_{\alpha,k}\bigr),
+  \qquad
+  \nu_{d,k} \sim \mathcal{N}(0,\sigma_{\nu_d}^2),\quad
+  \nu_{\alpha,k} \sim \mathcal{N}(0,\sigma_{\nu_\alpha}^2)
+\]
+
+Noise is modelled in polar coordinates because angle noise scales with distance
+while range noise is constant:
+\[
+  \Delta_{\text{tangential}} = \bar{d}_i \cdot \sin(\nu_\alpha) \approx \bar{d}_i \cdot \nu_\alpha
+\]
+
+\begin{notebox}
+  \textbf{Why angle noise is more dangerous at long range.}
+  A $1^\circ$ angle error causes a lateral shift $\Delta = d\cdot\sin(1^\circ)$:
+  \[
+    d = 1\,\text{m}:  \quad \Delta \approx 1.7\,\text{cm}
+    \qquad
+    d = 10\,\text{m}: \quad \Delta \approx 17\,\text{cm}
+  \]
+  Range noise $\sigma_{\nu_d}$ is constant: $5$\,cm at $1$\,m is $5$\,cm at $10$\,m.
+\end{notebox}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Uncertainty Ellipse: Polar to Cartesian}
+% ══════════════════════════════════════════════════════════════════════════════
+
+The LRF measures polar coordinates; downstream algorithms work in Cartesian.
+The conversion is nonlinear:
+\[
+  \boldsymbol{\xi}_i =
+  \begin{bmatrix} x_i \\ y_i \end{bmatrix}
+  =
+  \begin{bmatrix} \bar{d}_i\cos\bar{\alpha}_i \\ \bar{d}_i\sin\bar{\alpha}_i \end{bmatrix}
+\]
+
+The polar noise covariance (range and angle independent):
+\[
+  \Sigma = \begin{bmatrix} \sigma_{\nu_d}^2 & 0 \\ 0 & \sigma_{\nu_\alpha}^2 \end{bmatrix}
+\]
+
+To propagate $\Sigma$ into Cartesian space we linearise using the Jacobian
+(same idea as the EKF):
+\[
+  J(\bar{d}_i, \bar{\alpha}_i) =
+  \frac{\partial[x,y]}{\partial[d,\alpha]}
+  =
+  \begin{bmatrix}
+    \cos\bar{\alpha}_i & -\bar{d}_i\sin\bar{\alpha}_i \\
+    \sin\bar{\alpha}_i &  \bar{d}_i\cos\bar{\alpha}_i
+  \end{bmatrix}
+\]
+
+The Cartesian covariance is then:
+\[
+  \text{Cov}_{\text{Cartesian}} \approx J\,\Sigma\,J^\top
+\]
+
+The confidence ellipsoid in polar coordinates (probability level $1-p$):
+\[
+  \frac{(\bar{d}_i - d_i)^2}{\sigma_{\nu_d}^2}
+  + \frac{(\bar{\alpha}_i - \alpha_i)^2}{\sigma_{\nu_\alpha}^2}
+  = \chi^2_n(1-p)
+\]
+
+After the Jacobian transform the ellipse becomes tilted in Cartesian space:
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Radial axis} (along beam): half-length $\approx \sigma_{\nu_d}\sqrt{\chi^2}$
+        --- constant, does not grow with range.
+  \item \textbf{Tangential axis} (perpendicular to beam): half-length
+        $\approx \bar{d}_i\,\sigma_{\nu_\alpha}\sqrt{\chi^2}$
+        --- grows linearly with range.
+\end{itemize}
+
+\begin{notebox}
+  At short range the ellipse is compact in all directions.
+  At long range it becomes elongated sideways: you know the distance well
+  but the lateral position is increasingly uncertain --- the tangential axis
+  keeps growing while the radial axis stays fixed.
+\end{notebox}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Circle (Disc) Fitting --- Maximum Likelihood}
+% ══════════════════════════════════════════════════════════════════════════════
+
+Each robot is modelled as a disc. Given $N_K$ noisy Cartesian points
+$\boldsymbol{\xi}_{i,k}$ in cluster $K$, the best-fitting disc centre
+$\boldsymbol{\xi}_{c,k} = (x_{c,k}, y_{c,k})$ and radius $\rho$ minimise:
+\[
+  \min_{\boldsymbol{\xi}_{c,k},\,\rho}
+  \sum_{i=0}^{N_K}
+  \Bigl[
+    (\boldsymbol{\xi}_{c,k} - \boldsymbol{\xi}_{i,k})^\top
+    (\boldsymbol{\xi}_{c,k} - \boldsymbol{\xi}_{i,k})
+    - \rho^2
+  \Bigr]^2
+\]
+
+This is the maximum likelihood estimate when the points have equal, isotropic
+Gaussian noise --- it finds the centre and radius most consistent with all
+$N_K$ noisy measurements simultaneously. Noise on different points is
+independent, so errors partly cancel and the centre estimate is much more
+reliable than any single point alone.
+
+\subsection*{Reformulation as linear least squares}
+
+The nonlinear circle equation $(x_i - x_c)^2 + (y_i - y_c)^2 = \rho^2$
+is expanded and rearranged. Define:
+\[
+  p_1 = 2x_{c,k}, \qquad p_2 = 2y_{c,k}, \qquad p_3 = \rho^2 - x_{c,k}^2 - y_{c,k}^2
+\]
+
+Each point then gives a \emph{linear} equation in $(p_1, p_2, p_3)$:
+\[
+  p_1\cdot x_{i,k} + p_2\cdot y_{i,k} + p_3\cdot 1 = x_{i,k}^2 + y_{i,k}^2
+\]
+
+Stacking all $N_K$ equations: $X^\top p = q$, solved by the normal equation:
+\[
+  p = (XX^\top)^{-1}Xq
+  \qquad \text{where} \qquad
+  X =
+  \begin{bmatrix}
+    x_{1,k} & x_{2,k} & \cdots & x_{N_K,k} \\
+    y_{1,k} & y_{2,k} & \cdots & y_{N_K,k} \\
+    1       & 1       & \cdots & 1
+  \end{bmatrix},
+  \quad
+  q =
+  \begin{bmatrix}
+    x_{1,k}^2 + y_{1,k}^2 \\
+    x_{2,k}^2 + y_{2,k}^2 \\
+    \vdots \\
+    x_{N_K,k}^2 + y_{N_K,k}^2
+  \end{bmatrix}
+\]
+
+Extract the result: $x_{c,k} = p_1/2$, $y_{c,k} = p_2/2$,
+$\rho = \sqrt{p_3 + x_{c,k}^2 + y_{c,k}^2}$.
+
+\begin{notebox}
+  $XX^\top$ is only $3\times3$ regardless of how many points there are ---
+  so the inversion is trivial. This gives the global minimum in one step
+  with no iteration and no initial guess needed.
+
+  \textbf{Compare with line fitting} (Exercise 6): the same idea applies.
+  For a line $ax+by+c=0$ we minimise
+  $\sum(ax_i+by_i+c)^2/(a^2+b^2)$ --- perpendicular distances to the line.
+  The circle fitting minimises radial distances to a circle boundary instead.
+  Both reduce to a linear normal equation after the right substitution.
+\end{notebox}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Kalman Filter for Robot Tracking}
+% ══════════════════════════════════════════════════════════════════════════════
+
+The disc centre $\boldsymbol{\xi}_{c,k}$ from circle fitting is fed into a
+Kalman filter as the position measurement. With no knowledge of robot dynamics,
+a constant-velocity model is used:
+\[
+  \boldsymbol{\chi}_k =
+  \begin{bmatrix} x_k \\ y_k \\ v_{x,k} \\ v_{y,k} \end{bmatrix},
+  \qquad
+  \boldsymbol{\Phi} =
+  \begin{bmatrix}
+    1 & 0 & T_s & 0  \\
+    0 & 1 & 0   & T_s\\
+    0 & 0 & 1   & 0  \\
+    0 & 0 & 0   & 1
+  \end{bmatrix},
+  \qquad
+  H =
+  \begin{bmatrix}
+    1 & 0 & 0 & 0 \\
+    0 & 1 & 0 & 0
+  \end{bmatrix}
+\]
+
+$H$ extracts only position since the LiDAR measures disc centres, not velocity.
+The KF infers velocity from how position changes between steps.
+For multiple robots, independent filter instances run in parallel --- one
+state vector per robot.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\clearpage
+\section*{Exercises: We do All 4, Present Only 4--6}
+% ══════════════════════════════════════════════════════════════════════════════
+\vspace{-0.5cm}
+\begin{enumerate}
+  \setcounter{enumi}{2}
+  \item Write a Python function that determines if a straight line intersects
+        a specified circle, returning the intersection coordinates.
+  \item Use the function above to emulate a LiDAR shooting at a cylindrical
+        robot as in Wasik et al. Plot the robot and the point cloud.
+        Add noise to the measurements.
+  \item Place the simulated robot in front of a wall.
+        Simulate the point cloud from both robot and wall.
+  \item Assign wall point cloud data to one cluster. Use the optimisation
+        from Ex.\ 2 to determine the equation of the corresponding line.
+\end{enumerate}
+
+\subsection*{Exercise 4: LiDAR point cloud on cylindrical robot}
+
+For each beam angle $\alpha_i \in [0, 2\pi]$ we check whether the ray from the
+LiDAR origin hits the cylindrical robot modelled as a circle at position
+$(x_r, y_r)$ with radius $r$. The ray direction is:
+\[
+  (dx, dy) = (\cos\alpha_i,\; \sin\alpha_i)
+\]
+
+The intersection is checked by substituting the parametric ray
+$P = \text{lidar\_pos} + t\cdot(dx,\,dy)$ into the circle boundary ---
+a point is on the circle when its distance to the center equals the radius,
+so we require $\|P - \text{robot\_pos}\| = r$, or equivalently:
+\[
+  \|P - \text{robot\_pos}\|^2 = r^2
+\]
+This gives one equation in one unknown $t$ --- solve for $t$, then plug back
+in to get the hit point. Returns the closest hit $(x_h, y_h)$
+if $t > 0$ and within \texttt{lidar\_range}, otherwise \texttt{None}.
+
+\begin{notebox}
+Substituting the ray into the circle boundary and moving $r^2$ to the left:
+\[
+  \|P - \text{robot\_pos}\|^2 - r^2 = 0
+\]
+expands to a quadratic in $t$:
+\[
+  \underbrace{(dx^2+dy^2)}_{a_c}\,t^2
+  + \underbrace{2(fx\cdot dx + fy\cdot dy)}_{b_c}\,t
+  + \underbrace{(fx^2+fy^2-r^2)}_{c_c} = 0
+\]
+where $(fx,\,fy) = \text{lidar\_pos} - \text{robot\_pos}$.
+Solving with the quadratic formula:
+\[
+  t = \frac{-b_c - \sqrt{b_c^2 - 4a_c c_c}}{2a_c}
+\]
+The smallest positive $t$ gives the closest hit point:
+\[
+  (x_h,\,y_h) = \text{lidar\_pos} + t\cdot(dx,\,dy)
+\]
+\end{notebox}
+
+\textbf{Noise model.} Each hit point is converted to polar coordinates
+relative to the LiDAR origin --- taking the difference in $x$ and $y$
+between hit point and lidar gives the vector between them,
+Pythagoras gives the true range and \texttt{atan2} gives the true bearing:
+\[
+  d = \sqrt{(x_r - x_l)^2 + (y_r - y_l)^2}, \qquad
+  \alpha = \text{atan2}(y_r - y_l,\; x_r - x_l)
+\]
+where $x_l, y_l$ is the lidar position and $x_r, y_r$ the hit point on the robot.
+
+Independent Gaussian noise is then added in polar domain:
+\[
+  \tilde{d} = d + \nu_d, \quad \nu_d \sim \mathcal{N}(0, \sigma_d^2)
+  \qquad
+  \tilde{\alpha} = \alpha + \nu_\alpha, \quad \nu_\alpha \sim \mathcal{N}(0, \sigma_\alpha^2)
+\]
+and converted back to Cartesian:
+\[
+  \tilde{x}_r = x_l + \tilde{d}\cos(\tilde{\alpha}), \qquad
+  \tilde{y}_r = y_l + \tilde{d}\sin(\tilde{\alpha})
+\]
+Noise is added in polar domain because angle noise scales with distance ---
+a $1^\circ$ error at distance $d$ causes a lateral shift of
+$d\cdot\sin(\nu_\alpha) \approx d\cdot\nu_\alpha$,
+while range noise $\sigma_d$ is constant regardless of distance.
+
+\begin{notebox}
+  \textbf{Why angle noise is more dangerous at long range.}
+  A $1^\circ$ angle error causes a lateral shift of $\Delta = d\cdot\sin(\nu_\alpha)$:
+  \[
+    d = 1\,\text{m}:  \quad \Delta = 1 \cdot \sin(1^\circ) \approx 1 \cdot 0.017 = 1.7\,\text{cm}
+  \]
+  \[
+    d = 10\,\text{m}: \quad \Delta = 10 \cdot \sin(1^\circ) \approx 10 \cdot 0.017 = 17\,\text{cm}
+  \]
+  Range noise $\sigma_d$ is constant: $5\,\text{cm}$ error at $1$\,m is the
+  same $5\,\text{cm}$ at $10$\,m.
+\end{notebox}
+
+\subsection*{Exercise 5: Robot in front of wall}
+
+We add a wall behind the robot. For each beam angle we check the robot first
+--- if it hits, the wall behind is occluded:
+\[
+  \text{for each } \alpha_i: \quad
+  \begin{cases}
+    \text{check robot} \rightarrow \text{hit}  & \rightarrow \text{record robot point, skip wall}\\
+    \text{check robot} \rightarrow \text{miss} & \rightarrow \text{check wall}
+  \end{cases}
+\]
+
+The wall intersection uses two parametric lines:
+\[
+  \text{ray:} \quad P = \text{lidar} + t\cdot(dx,\,dy)
+  \qquad
+  \text{wall:} \quad W = \text{wall\_start} + s\cdot(wx,\,wy)
+\]
+
+Setting $P = W$ and solving gives $t$ and $s$ via the 2D cross product:
+\[
+  \text{denom} = dx\cdot wy - dy\cdot wx
+\]
+
+If $\text{denom} = 0$ the ray is parallel to the wall --- no intersection possible.
+Otherwise:
+\[
+  t = \frac{fx\cdot wy - fy\cdot wx}{\text{denom}}, \qquad
+  s = \frac{fx\cdot dy - fy\cdot dx}{\text{denom}}
+\]
+where $(fx,\,fy) = \text{wall\_start} - \text{lidar}$.
+Two conditions must both hold for a valid hit:
+\begin{itemize}[leftmargin=1.4em]
+  \item $0 < t \leq \texttt{lidar\_range}$ --- in front of lidar and within range
+  \item $s \in [0,\,1]$ --- within the actual wall segment, not the infinite line
+\end{itemize}
+
+\begin{notebox}
+  \textbf{Concrete example:} lidar at $(0,0)$, ray going right $(dx,dy)=(1,0)$,
+  wall from $(5,-3)$ to $(5,3)$ so $(wx,wy)=(0,6)$.
+
+  \textbf{Finding $t$ --- how far along the ray:}
+  \[
+  \begin{aligned}
+    \text{denom} &= 1\cdot6 - 0\cdot0 = 6 \\
+    fx &= 5,\quad fy = -3\\
+    t &= \frac{5\cdot6 - (-3)\cdot0}{6} = 5
+    \quad\rightarrow\quad \text{hit at }(0,0)+5\cdot(1,0) = (5,0) \;\checkmark
+  \end{aligned}
+  \]
+  \textbf{Finding $s$ --- where on the wall segment:}
+  \[
+    s = \frac{5\cdot0 - (-3)\cdot1}{6} = 0.5
+    \quad\rightarrow\quad \text{halfway along wall} \;\checkmark
+  \]
+  If hit at $(5,-4)$: $s < 0$ $\rightarrow$ miss.\quad
+  If hit at $(5,\phantom{-}4)$: $s > 1$ $\rightarrow$ miss.
+\end{notebox}
+
+\subsection*{Exercise 6: Wall cluster and line fitting}
+
+We fit a line $ax+by+c=0$ to the wall point cloud by minimising the sum of
+squared perpendicular distances:
+\[
+  \min_{a,b,c} \sum_{i} \frac{(ax_i + by_i + c)^2}{a^2 + b^2}
+\]
+where $(a,b)$ is the normal vector defining line orientation and $c$ the
+offset from the origin. The denominator $a^2+b^2$ normalises to give true
+perpendicular distances. Solved numerically with \texttt{scipy.optimize.minimize}.
+
+\begin{itemize}[leftmargin=1.4em]
+  \item $a=1,\; b=0$ $\;\rightarrow\;$ normal points in $x$-direction
+        $\;\rightarrow\;$ line is \textbf{vertical}
+  \item $a=0,\; b=1$ $\;\rightarrow\;$ normal points in $y$-direction
+        $\;\rightarrow\;$ line is \textbf{horizontal}
+\end{itemize}
+
+Once $a,b,c$ are found, solve for $x$ to reconstruct the line for plotting:
+\[
+  ax + by + c = 0 \quad\rightarrow\quad x = \frac{-(by + c)}{a}
+\]
+Describes how $x$ changes as $y$ moves along the line ---
+for a perfect vertical wall $b \approx 0$ so $x \approx -c/a$ is constant,
+confirming the line is vertical.
+Evaluated at $y = [y_{\min},\; y_{\max}]$ of the wall points ---
+constraining the plotted line to the actual wall segment.
+
+\begin{notebox}
+  \textbf{Example --- vertical wall at $x=5$:}
+  $a=1,\; b=0$ because the wall is perpendicular to the $x$-axis,
+  $c=-5$ because the origin is 5 units from the wall:
+  \[
+    \underbrace{a\cdot x}_{\text{how far in }x} +
+    \underbrace{b\cdot y}_{\text{how far in }y} +
+    \underbrace{c}_{\text{offset from origin}} = 0
+    \quad\rightarrow\quad
+    1\cdot5 + 0\cdot y + (-5) = 0 \;\checkmark
+  \]
+\end{notebox}
+
+\end{document}

@@ -1,0 +1,2413 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage[T1]{fontenc}
+
+% ── Graphics path ─────────────────────────────────────────────────────────────
+\graphicspath{{../../Images_for_latex/Lecture_7/}}
+
+% ── Colours ───────────────────────────────────────────────────────────────────
+\definecolor{keyblue}{RGB}{30, 80, 160}
+\definecolor{keybluebg}{RGB}{220, 235, 255}
+\definecolor{noteorange}{RGB}{200, 100, 0}
+\definecolor{noteorangebg}{RGB}{255, 240, 215}
+\definecolor{warnred}{RGB}{180, 30, 30}
+\definecolor{warnredbg}{RGB}{255, 220, 220}
+\definecolor{defgreen}{RGB}{20, 110, 50}
+\definecolor{defgreenbg}{RGB}{215, 245, 225}
+\definecolor{headernavy}{RGB}{25, 35, 90}
+
+% ── Box environments ──────────────────────────────────────────────────────────
+\newmdenv[linecolor=keyblue,backgroundcolor=keybluebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{keybox}
+
+\newmdenv[linecolor=noteorange,backgroundcolor=noteorangebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{notebox}
+
+\newmdenv[linecolor=warnred,backgroundcolor=warnredbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{warnbox}
+
+\newmdenv[linecolor=defgreen,backgroundcolor=defgreenbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{defbox}
+
+% ── Section formatting ────────────────────────────────────────────────────────
+\titleformat{\section}[block]{\large\bfseries\color{headernavy}}{}{0pt}{}
+  [\vspace{2pt}\rule{\linewidth}{0.8pt}\vspace{4pt}]
+\titleformat{\subsection}[block]{\normalsize\bfseries\color{keyblue}}{}{0pt}{}
+
+% ── Document ──────────────────────────────────────────────────────────────────
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries\color{headernavy} Sensors \& Systems}\\[4pt]
+  {\large Ranging-based Sensors}\\[2pt]
+  {\normalsize Jan Bendtsen, Torben Knudsen \quad|\quad Electronic Systems, 8th Semester}
+\end{center}
+
+\vspace{4pt}\hrule height 1.2pt\vspace{12pt}
+
+% ==============================================================================
+\section*{Section 1 \quad Ranging-based Sensors \& Applications}
+% ==============================================================================
+
+A \textbf{ranging-based sensor} measures the \emph{distance} from the sensor to
+a target or surface.
+Rather than capturing an image or measuring a physical quantity at the sensor's
+own location, it sends out some kind of wave or pulse, waits for the echo to
+return, and infers distance from the round-trip travel time or phase.
+The three dominant technologies are \textbf{Sonar}, \textbf{Radar}, and
+\textbf{LiDAR} --- each using a different part of the wave spectrum.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{slide-03.jpg}
+  \caption{Overview of the three main ranging sensor families: Radar (radio
+    waves, long range, penetrates weather), LiDAR (laser light, high spatial
+    resolution), and Sonar (sound waves, primarily underwater).}
+\end{figure}
+
+% ------------------------------------------------------------------------------
+\subsection*{1.1 \quad Sonar --- Sound Navigation and Ranging}
+% ------------------------------------------------------------------------------
+
+\textbf{Sonar} uses \emph{sound propagation} to navigate and measure distances.
+It is most commonly used \emph{underwater} (submarines, ship navigation, fish
+finding), where radio waves cannot propagate effectively.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-04.jpg}
+  \caption{Active sonar (left) emits a sound pulse and listens for echoes
+    returning from objects.  Passive sonar (right) only listens for sounds
+    emitted by other vessels or targets.}
+\end{figure}
+
+There are two operating modes:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Passive sonar} --- simply listens for sounds emitted by other
+    objects (e.g.\ an enemy submarine's engine noise).  No pulse is transmitted,
+    so the sensor itself remains undetected.
+  \item \textbf{Active sonar} --- emits a pulse of sound and listens for the
+    returning echo.  Allows precise distance measurement but reveals the
+    presence of the sensor.
+\end{itemize}
+
+\begin{notebox}
+  \textbf{Nature uses sonar too.}
+  Bats, toothed whales (e.g.\ dolphins), and certain shrews use \emph{active}
+  biological sonar (echo-location) to navigate and hunt.
+  Dolphins can emit up to 600 clicks per second.
+  The focused beam is shaped by a fatty organ called the \emph{melon}.
+\end{notebox}
+
+% ------------------------------------------------------------------------------
+\subsection*{1.2 \quad Radar --- Radio Detection and Ranging}
+% ------------------------------------------------------------------------------
+
+\textbf{Radar} uses \emph{radio waves} to determine the distance, direction
+(azimuth and elevation angles), and \emph{radial velocity} of objects relative
+to the sensor site.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\textwidth]{slide-05.jpg}
+  \caption{A traditional rotating-dish radar antenna.  Modern high-tech radar
+    systems use digital signal processing and machine learning to extract
+    useful information even at very high noise levels.}
+\end{figure}
+
+Key properties of Radar:
+\begin{itemize}[leftmargin=1.4em]
+  \item Uses radio waves, typically in the range \textbf{30\,cm -- 3\,mm}
+    wavelength (microwave band).
+  \item Penetrates \textbf{fog, clouds, rain, and darkness} --- making it ideal
+    for aviation, maritime, and automotive applications where LiDAR would
+    struggle in bad weather.
+  \item Can also measure \textbf{radial velocity} directly via the Doppler
+    effect (frequency shift of the returning wave).
+  \item Used to detect and track aircraft, ships, spacecraft, guided missiles,
+    motor vehicles, weather formations, and terrain.
+\end{itemize}
+
+\begin{notebox}
+  \textbf{What do azimuth, elevation, and radial velocity actually mean?}
+
+  A radar measures three geometric quantities about a target simultaneously:
+
+  \begin{itemize}[leftmargin=1.2em,itemsep=3pt]
+    \item \textbf{Azimuth} --- the \emph{horizontal} angle to the target,
+      like a compass bearing.  Standing at the radar: 0$^\circ$ = North, 90$^\circ$ = East,
+      180$^\circ$ = South, and so on.  The rotating dish sweeps through all azimuth
+      angles to scan the full horizon.
+
+    \item \textbf{Elevation} --- the \emph{vertical} angle above the horizon.
+      0$^\circ$ is flat along the ground, 90$^\circ$ is straight up.  Together, azimuth +
+      elevation give the full 3D \emph{direction} to the target (like
+      spherical coordinates).
+
+    \item \textbf{Radial velocity} --- the component of the target's velocity
+      that is directed \emph{directly toward or away from the radar}.  This is
+      measured via the \textbf{Doppler effect}: a target moving toward the
+      radar compresses the returning radio wave (higher frequency); a target
+      moving away stretches it (lower frequency).  The frequency shift is
+      directly proportional to the radial velocity.
+
+      \textit{Important:} this is \emph{not} the full velocity vector.  A car
+      driving sideways past the radar has nearly zero radial velocity even if
+      it is travelling at 100\,km/h --- the beam sees it moving neither toward
+      nor away.
+  \end{itemize}
+
+  Together: \textbf{azimuth + elevation + range} give the full 3D
+  \emph{position} of the target; \textbf{radial velocity} gives how fast it
+  is approaching or receding.  This is why radar is so effective for tracking
+  aircraft: one measurement gives both position and approach speed.
+\end{notebox}
+
+\begin{notebox}
+  \textbf{Active vs.\ passive radar --- and how range is actually computed}
+
+  Just like sonar, radar can operate in two modes:
+  \begin{itemize}[leftmargin=1.2em,itemsep=3pt]
+    \item \textbf{Active radar} --- transmits its own radio pulse and listens
+      for the returning echo.  The classic rotating-dish radar is active.
+    \item \textbf{Passive radar} --- transmits \emph{nothing}.  Instead it
+      exploits existing radio signals in the environment --- FM radio
+      stations, TV broadcasts, WiFi, mobile towers --- as
+      \textit{illuminators of opportunity}, and detects their reflections
+      off targets.  Because no pulse is emitted, the radar itself stays
+      completely undetectable; similar in spirit to passive sonar.
+  \end{itemize}
+
+  \textbf{How range is computed} depends on the radar type:
+  \begin{itemize}[leftmargin=1.2em,itemsep=3pt]
+    \item \textbf{Pulsed radar} --- emits a short burst and measures the
+      round-trip \emph{time of flight}.  Same principle as pulsed LiDAR:
+      \[
+        R = \tfrac{1}{2}\,c\,t
+      \]
+      where $c$ is the speed of light and $t$ is the measured delay.
+
+    \item \textbf{FMCW radar} (Frequency-Modulated Continuous Wave) ---
+      transmits a continuous signal whose frequency is swept linearly up and
+      down in a ramp (a ``chirp'').  Because the received echo is delayed
+      relative to the transmitted signal, there is a constant
+      \emph{frequency difference} $\Delta f$ between what is being
+      transmitted and what is being received at any instant.  This
+      frequency difference is directly proportional to range:
+      \[
+        R \propto \Delta f
+      \]
+      FMCW is widely used in automotive radar because it can measure range
+      and radial velocity \emph{simultaneously} from the same waveform.
+
+    \item \textbf{Doppler shift} --- the \emph{change} in frequency of the
+      returned wave (not the difference described above) gives the radial
+      velocity, not the range directly.
+  \end{itemize}
+
+  In summary: \textbf{time of flight} $\to$ range (pulsed);
+  \textbf{frequency difference} $\to$ range (FMCW);
+  \textbf{frequency shift} $\to$ radial velocity (Doppler).
+\end{notebox}
+
+% ------------------------------------------------------------------------------
+\subsection*{1.3 \quad LiDAR --- Light Detection and Ranging}
+% ------------------------------------------------------------------------------
+
+\textbf{LiDAR} uses \emph{laser light} (ultraviolet, visible, or near-infrared)
+to measure distances with very high spatial resolution.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-06.jpg}
+  \caption{LiDAR point cloud of two cars.  A spinning LiDAR head sweeps laser
+    beams in all directions; each reflection gives one 3D data point, building
+    up a dense point cloud of the environment.}
+\end{figure}
+
+Key properties of LiDAR:
+\begin{itemize}[leftmargin=1.4em]
+  \item Most systems work in \textbf{pulsed} ranging mode: a very short pulse
+    ($<50$\,ns) is emitted, and part of the reflected pulse returns to the
+    sensor.  Distance is computed from the time of flight.
+  \item Unlike radar, LiDAR uses \textbf{laser light} (typically 903 or 905\,nm
+    near-infrared), giving \emph{much finer angular resolution} but poorer
+    performance in rain, fog, or dust.
+  \item Due to the narrow beam, LiDAR uses \textbf{swivel mechanisms or phased
+    arrays} to scan across a field of view, producing a full 3D point cloud.
+\end{itemize}
+
+\begin{notebox}
+  \textbf{What a returning laser pulse actually tells you --- range and colour}
+
+  Every time the laser fires, two independent pieces of information come back
+  from the returning pulse:
+
+  \begin{itemize}[leftmargin=1.2em,itemsep=3pt]
+    \item \textbf{When} it returns $\;\to\;$ \textbf{range.}
+      The round-trip time of flight $t$ gives the distance directly:
+      \[
+        R = \tfrac{1}{2}\,c\,t
+      \]
+      This is exactly the same principle as pulsed radar and pulsed sonar ---
+      only the wave speed $c$ differs.
+
+    \item \textbf{How strongly} it returns $\;\to\;$ \textbf{reflectivity
+      (intensity / ``colour'').}
+      The \emph{amplitude} of the returned pulse tells you how much laser
+      energy the surface reflected back toward the sensor.
+      A highly reflective surface (white road markings, metal signs,
+      retroreflectors) returns a strong pulse $\to$ bright/high-intensity
+      point.
+      A dark or absorbing surface (black asphalt, rubber tyres) returns a weak
+      pulse $\to$ dim/low-intensity point.
+      This is why point clouds can be \emph{coloured by return intensity}
+      --- each point carries both its 3D position and a reflectivity value.
+      The coloured-intensity image from slide~19 is exactly this: brighter
+      pixels are more reflective surfaces.
+  \end{itemize}
+
+  \textbf{Why wavelength (frequency) matters for material identification.}
+  Different materials reflect different wavelengths differently.  LiDAR
+  typically uses near-infrared (903--905\,nm) because:
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item It is eye-safe at reasonable power levels.
+    \item Water and chlorophyll \emph{absorb} near-infrared, so vegetation
+      gives a weaker return than dry surfaces at the same distance --- the
+      sensor can start to distinguish material type from intensity alone.
+    \item Using \emph{two wavelengths simultaneously} (multi-spectral LiDAR)
+      gives two intensity values per point.  Because each material has its
+      own reflectivity ``fingerprint'' across wavelengths, comparing the two
+      intensities allows the system to \emph{classify} what the surface is
+      made of (e.g.\ tree canopy vs.\ ground vs.\ building facade) even if
+      they are at the same height.
+  \end{itemize}
+
+  In short: \textbf{time} $\to$ range;
+  \textbf{amplitude} $\to$ reflectivity / point colour;
+  \textbf{wavelength choice} $\to$ material sensitivity.
+\end{notebox}
+
+% ── Comparison table ──────────────────────────────────────────────────────────
+\begin{notebox}
+  \textbf{Sensor comparison at a glance}
+
+  \vspace{4pt}
+  \begin{tabular}{@{}lllll@{}}
+    \toprule
+    \textbf{Sensor} & \textbf{Wave type} & \textbf{Range} &
+      \textbf{Resolution} & \textbf{Weather} \\
+    \midrule
+    Sonar  & Sound ($\sim$kHz--MHz)  & Medium (water) & Moderate   & N/A (water) \\
+    Radar  & Radio (mm--cm)          & Long (km)       & Low--Med   & Excellent \\
+    LiDAR  & Laser (near-IR)         & Short--Med      & Very high  & Poor (fog/rain) \\
+    \bottomrule
+  \end{tabular}
+\end{notebox}
+
+% ------------------------------------------------------------------------------
+\clearpage
+\subsection*{1.4 \quad Applications}
+% ------------------------------------------------------------------------------
+
+Ranging sensors are found wherever a machine needs to \emph{perceive} its
+physical environment in 3D.  In some applications a \emph{single} sensor type
+is sufficient; in others, \emph{combining} several sensors is necessary because
+each has blind spots the others cover.
+
+\textbf{Autonomous car navigation} --- sensor combination (slide~7):
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\textwidth]{slide-07.jpg}
+  \caption{Three complementary sensors on an autonomous vehicle, each covering
+    what the others cannot.}
+\end{figure}
+
+This is the clearest example of \emph{why} sensors are combined:
+\begin{itemize}[leftmargin=1.4em,itemsep=3pt]
+  \item \textbf{Radar alone} can detect that \emph{something} is ahead and
+    how fast it is approaching (radial velocity via Doppler), and it works in
+    fog, rain, and darkness.  But its spatial resolution is too low to tell
+    whether that something is a pedestrian, a parked car, or a road sign.
+  \item \textbf{LiDAR alone} builds a precise 3D point cloud of the
+    surroundings (sub-centimetre resolution) and can identify shapes of objects
+    well.  But it fails in heavy rain or fog because water droplets scatter
+    the laser, and it cannot read text or colour (speed-limit signs, traffic
+    lights).
+  \item \textbf{Camera alone} reads colour, text, and rich visual detail
+    (signs, lane markings, traffic lights), but gives no direct range
+    measurement and struggles in darkness or glare.
+\end{itemize}
+
+Used \emph{together}: radar handles adverse weather and provides velocity;
+LiDAR maps the 3D geometry of the scene in good conditions; the camera reads
+visual information no ranging sensor can capture.  Each sensor fills in the
+gaps of the others --- this is called \textbf{sensor fusion}.
+\clearpage
+\textbf{Underwater echo-location} --- sonar alone (slide~8):
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-08.jpg}
+  \caption{A dolphin using biological active sonar.  Sound pulses emitted from
+    the head reflect off prey; the returning echoes are used to estimate
+    distance and direction.  No combination needed --- sonar is the only
+    practical ranging method underwater, since light and radio waves are
+    absorbed within metres.}
+\end{figure}
+
+Here a \emph{single} sensor type is used because the medium (water) rules out
+all alternatives: radio waves are absorbed almost immediately underwater, and
+visible light scatters strongly beyond a few metres.  Sound, however,
+propagates very efficiently in water.  Active sonar alone is therefore
+sufficient to sense range and direction to targets.
+\clearpage
+\textbf{Geo-surveying} --- LiDAR alone (slide~9):
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\textwidth]{slide-09.jpg}
+  \caption{Airborne LiDAR geo-survey.  The aircraft sweeps a laser beam
+    downward; each reflected pulse gives one 3D ground point.  The result is a
+    high-resolution digital terrain model used in surveying, archaeology,
+    geology, forestry, and atmospheric physics.}
+\end{figure}
+
+In open-air surveying from an aircraft, LiDAR alone is sufficient: the goal is
+purely to measure the 3D geometry of the terrain below with the highest
+possible resolution.  Radar would give longer range but far lower spatial
+resolution, and a camera gives no direct range.  LiDAR's ability to penetrate
+gaps in tree canopy and return \emph{multiple echoes} (canopy return, lower
+canopy, ground return --- see the waveform model in Section~3) makes it
+uniquely suited to this task.
+
+
+% ------------------------------------------------------------------------------
+\clearpage
+\subsection*{1.5 \quad Essential Components of a LiDAR Sensor}
+% ------------------------------------------------------------------------------
+
+Before diving into the measurement physics, it helps to understand the
+\emph{hardware} that makes LiDAR work.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-10.jpg}
+  \caption{Cut-away of a rotating LiDAR head showing the five key components:
+    (1)~\textbf{Laser source} --- emits the outgoing pulse.
+    (2)~\textbf{Tilting mirror} --- steers the beam vertically.
+    (3)~\textbf{Servo motor} --- rotates the entire head horizontally for full
+    360$^\circ$ azimuth coverage.
+    (4)~\textbf{Optical rotary encoders} --- record the exact azimuth and
+    elevation angles at the moment of each pulse, so every returned distance
+    can be assigned its correct angular direction.
+    (5)~\textbf{Receiver} --- captures the returning laser pulse.}
+\end{figure}
+
+\begin{itemize}[leftmargin=1.4em]
+  \item The \textbf{laser source} emits a short, powerful pulse of coherent
+    light.  The pulse duration directly affects range resolution
+    (shorter pulse $\Rightarrow$ finer resolution --- see Section~2).
+  \item The \textbf{tilting mirror + servo motor} combination allows the sensor
+    to build a full 3D scan: the motor rotates the head through 360$^\circ$ in azimuth
+    while the mirror tilts through a vertical field of view.
+  \item The \textbf{optical rotary encoders} are critical for accuracy ---
+    without knowing the exact pointing angle at the moment of each pulse, the
+    3D coordinates of the return point cannot be computed.
+  \item The \textbf{receiver} (photodetector) converts the returning photons
+    back into an electrical signal.  The time between transmit and receive is
+    measured to give the distance.
+\end{itemize}
+
+% ── Key takeaways ─────────────────────────────────────────────────────────────
+\begin{keybox}
+  \textbf{Section 1 --- Key Takeaways}
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item Ranging sensors measure distance by sending a wave and timing (or
+      phase-comparing) the return.  The three main families are
+      \textbf{Sonar} (sound), \textbf{Radar} (radio waves), and
+      \textbf{LiDAR} (laser light).
+    \item \textbf{Sonar} is optimal underwater; active mode measures range,
+      passive mode only listens.
+    \item \textbf{Radar} has the longest range and works in all weather, but
+      lower spatial resolution.  It can also measure radial velocity via the
+      Doppler effect.
+    \item \textbf{LiDAR} gives the highest spatial resolution (sub-centimetre
+      point clouds) but requires clear air.  It is rapidly becoming the
+      dominant sensor in engineering applications (robotics, autonomous
+      vehicles, mapping).
+    \item A rotating LiDAR head combines a laser source, steering mirror,
+      servo motor, rotary encoders (for angle), and a receiver.  The encoders
+      are what turn a 1D range into a 3D point.
+  \end{itemize}
+\end{keybox}
+
+% ==============================================================================
+\newpage
+\section*{Section 2 \quad Measurement Principles: Pulsed \& Phased LiDAR}
+% ==============================================================================
+
+Now that we know \emph{what} a LiDAR is made of, we look at \emph{how} it
+actually measures distance.
+There are two fundamentally different approaches: \textbf{pulsed} LiDAR, which
+uses time of flight, and \textbf{phased} (continuous-wave) LiDAR, which uses
+the phase of a modulated wave.
+Both ultimately rely on the finite speed of light, but they extract the
+distance in different ways and come with different trade-offs in range and
+precision.
+
+% ------------------------------------------------------------------------------
+\subsection*{2.1 \quad Pulsed LiDAR --- Time of Flight}
+% ------------------------------------------------------------------------------
+
+The simplest and most common mode.
+The laser fires a single short pulse ($<50$\,ns), and a timer starts.
+When the reflected echo arrives at the receiver, the timer stops.
+The round-trip time $t$ gives the distance directly.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{slide-11.jpg}
+  \caption{Pulsed LiDAR timing diagram.  Top: the transmitted pulse train
+    with period $T$ and amplitude $A_t$.  Bottom: the received echo train,
+    delayed by the round-trip time $t$ and reduced in amplitude $A_R$.
+    Right: physical setup --- the transmitter fires toward a surface at
+    distance $R$; the receiver captures the return.}
+\end{figure}
+
+\textbf{Range from time of flight:}
+
+The pulse travels to the target and back, covering a total distance of $2R$
+at the speed of light $c$.  Solving for $R$:
+\[
+  R = \frac{1}{2}\,c\,t
+\]
+where $t$ is the measured round-trip time and $c \approx 3\times10^8$\,m/s.
+The factor $\frac{1}{2}$ accounts for the \emph{two-way} trip --- the pulse
+must travel to the target \emph{and} back.
+
+\textbf{Distance resolution from sampling interval:}
+
+In practice the timer is a digital clock with a fixed sampling interval
+$\Delta t$ (the smallest time step it can resolve).  This limits how finely
+the range can be measured.  The \emph{distance resolution} --- the smallest
+difference in range that can be distinguished --- is:
+\[
+  \Delta R = \frac{1}{2}\,c\,\Delta t
+\]
+A shorter clock tick $\Delta t$ gives finer range resolution.  For example,
+$\Delta t = 1$\,ns gives $\Delta R = 15$\,cm.
+
+\begin{notebox}
+  \textbf{What limits the maximum measurement distance?}
+
+  The formula $R = \frac{1}{2}ct$ gives range from time alone, but the sensor
+  can only detect a return if the echo is strong enough to register above the
+  noise floor of the receiver.  The maximum range is therefore affected by:
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item \textbf{Laser power} --- more powerful pulse $\to$ stronger echo
+      at long range.
+    \item \textbf{Beam divergence} --- a wider beam spreads energy over a
+      larger footprint at distance, reducing the power density hitting the
+      target and the fraction reflected back.
+    \item \textbf{Atmospheric transmission} --- air, water vapour, dust, and
+      fog absorb and scatter the beam, attenuating it over distance.
+    \item \textbf{Target reflectance} --- a dark or rough surface absorbs
+      more of the pulse; a bright or smooth surface reflects more back.
+    \item \textbf{Detector sensitivity} --- a more sensitive photodetector
+      can register weaker returns.
+  \end{itemize}
+  All five factors feed into the \emph{LiDAR range equation} (the scattering
+  model derived in Section~3).
+\end{notebox}
+
+% ------------------------------------------------------------------------------
+\subsection*{2.2 \quad Phased LiDAR --- Continuous Wave with Phase Comparison}
+% ------------------------------------------------------------------------------
+
+Instead of firing a short pulse, phased (or phase-based) LiDAR emits a
+\emph{continuous} laser beam whose \emph{intensity is modulated} sinusoidally
+at a fixed frequency $f$.
+The receiver compares the \emph{phase} of the returning wave with the phase of
+the transmitted wave.
+Because the light travels a round-trip distance $2R$ at speed $c$, the
+returning wave is delayed by time $t = 2R/c$, which appears as a phase shift
+$\phi$.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{slide-12.jpg}
+  \caption{Phased LiDAR signals.  Top: the transmitted sinusoidal wave with
+    period $T = \lambda/c$ and amplitude $A_t$.  Bottom: the received wave,
+    shifted in phase by $\phi$ relative to the transmitted wave.  The
+    half-period $T/2$ corresponds to a round trip of one full wavelength
+    $\lambda$.}
+\end{figure}
+
+\textbf{Phase difference to range:}
+
+The wave completes one full cycle ($2\pi$ radians) in one period $T$.
+The received signal is delayed by time $t$, which is a fraction $t/T$ of one
+full cycle, corresponding to a phase shift $\phi$:
+\[
+  \frac{t}{T} = \frac{\phi}{2\pi}
+  \quad\Longrightarrow\quad
+  t = \frac{T\,\phi}{2\pi}
+\]
+Substituting into $R = \frac{1}{2}ct$ and using $T = 1/f = \lambda/c$:
+\[
+  R
+  = \frac{1}{2}\,c\,\frac{T\,\phi}{2\pi}
+  = \frac{c}{4\pi f}\,\phi
+  = \frac{\lambda}{4\pi}\,\phi
+\]
+where $\lambda = c/f$ is the modulation wavelength (not the optical
+wavelength of the laser itself, but the wavelength of the \emph{intensity
+modulation}).
+
+\begin{notebox}
+  \textbf{Intuition for the phase formula.}
+
+  Think of the modulated intensity as a ruler laid along the beam.  One full
+  wavelength $\lambda$ of the modulation corresponds to a round-trip distance
+  of $\lambda$ (i.e.\ a one-way range of $\lambda/2$).  Measuring the phase
+  $\phi$ tells you \emph{where along that ruler} the target sits:
+  \[
+    R = \frac{\lambda}{4\pi}\,\phi
+    \qquad
+    \text{(range increases linearly with measured phase)}
+  \]
+  A full phase cycle $\phi = 2\pi$ gives $R = \lambda/2$ --- the maximum
+  \emph{unambiguous} range.  Beyond this, the phase wraps around and the
+  system cannot tell whether $\phi$ corresponds to one range or a range one
+  modulation wavelength further away.  This is the fundamental range
+  ambiguity of phased LiDAR.
+
+  \begin{center}
+    \begin{tabular}{@{}lll@{}}
+      \toprule
+      & \textbf{Pulsed LiDAR} & \textbf{Phased LiDAR} \\
+      \midrule
+      Range from    & Time of flight $t$              & Phase shift $\phi$ \\
+      Formula       & $R = \tfrac{1}{2}ct$            & $R = \tfrac{\lambda}{4\pi}\phi$ \\
+      Range limit   & Laser power / atmosphere        & Modulation wavelength ($\lambda/2$) \\
+      Typical range & Long ($>100$\,m)                & Shorter ($\sim$1--100\,m) \\
+      Precision     & Moderate                        & Higher \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \textbf{Why phased LiDAR is more precise.}
+  Pulsed LiDAR measures a very short \emph{time interval} (nanoseconds);
+  even a 1\,ns clock gives only $\Delta R = 15$\,cm resolution.
+  Phased LiDAR instead measures a \emph{phase angle}, which electronic
+  circuits (phase-locked loops, mixers) can resolve to fractions of a degree.
+  Furthermore, the continuous wave \emph{averages over many cycles},
+  suppressing noise the same way a longer integration time helps any
+  measurement.  The result: sub-millimetre precision is achievable with
+  phased LiDAR at short ranges, whereas pulsed systems rarely do better than
+  a few centimetres.  The cost, as shown above, is the limited unambiguous
+  range $\lambda/2$.
+\end{notebox}
+
+\begin{notebox}
+  \textbf{Example calculation --- phased LiDAR range}
+
+  Suppose the intensity modulation frequency is $f = 10$\,MHz.  Then:
+  \[
+    \lambda = \frac{c}{f} = \frac{3\times10^8}{10\times10^6} = 30\,\text{m}
+    \qquad
+    R_{\max} = \frac{\lambda}{2} = 15\,\text{m (unambiguous range)}
+  \]
+  If the receiver measures a phase shift of $\phi = 120^\circ = \tfrac{2\pi}{3}$\,rad:
+  \[
+    R = \frac{\lambda}{4\pi}\,\phi
+      = \frac{30}{4\pi}\cdot\frac{2\pi}{3}
+      = \frac{30}{6}
+      = 5\,\text{m}
+  \]
+  The target is 5\,m away.
+
+  \textbf{The ambiguity problem --- why the target must be closer than
+  $\lambda/2$.}
+
+  You are right to flag this.  The phase $\phi$ is always measured in the
+  range $[0,\,2\pi)$ --- the receiver cannot count how many full cycles the
+  wave has completed; it only sees \emph{where in the current cycle} the
+  return sits.  This means that any target further than $\lambda/2$ produces
+  a phase that \emph{wraps around} and looks identical to a closer target.
+
+  \textit{Concrete example:} take the same $\lambda = 30$\,m system.
+  \begin{itemize}[leftmargin=1.2em,itemsep=3pt]
+    \item \textbf{Target A} at $R = 5$\,m:
+      $\phi = \tfrac{4\pi \times 5}{30} = \tfrac{2\pi}{3} \approx 120^\circ$
+      \quad$\to$ measured as $120^\circ$ \checkmark
+    \item \textbf{Target B} at $R = 20$\,m:
+      $\phi = \tfrac{4\pi \times 20}{30} = \tfrac{8\pi}{3} \approx 480^\circ$
+      \quad$\to$ wraps: $480^\circ - 360^\circ = 120^\circ$
+  \end{itemize}
+  Target A at 5\,m and Target B at 20\,m give \textbf{exactly the same
+  measured phase of $120^\circ$}.  The system cannot tell them apart.
+
+  The wrap occurs at every multiple of $\lambda/2 = 15$\,m.  So 5\,m,
+  20\,m, 35\,m, \ldots\ are all indistinguishable.
+
+  \textbf{Design rule:} choose the modulation frequency $f$ so that
+  $\lambda/2$ is \emph{larger} than the furthest target you ever expect:
+  \[
+    f < \frac{c}{2\,R_{\max,\,\text{expected}}}
+  \]
+  Lower frequency $\to$ longer $\lambda$ $\to$ larger unambiguous range,
+  but also coarser phase ruler $\to$ worse precision.  This is the core
+  trade-off of phased LiDAR.
+
+  \textit{Note:} some systems use \textbf{two modulation frequencies}
+  simultaneously.  The beat between them effectively creates a much longer
+  ``virtual wavelength'', extending the unambiguous range while keeping
+  fine precision from the higher frequency --- similar to a vernier scale.
+\end{notebox}
+
+% ------------------------------------------------------------------------------
+\subsection*{2.3 \quad Ranging Precision}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{slide-13.jpg}
+  \caption{Ranging precision slide.  The two formulas give the standard
+    deviation of the range estimate for pulsed and phased LiDAR respectively,
+    showing how noise bandwidth and received power govern measurement quality.}
+\end{figure}
+
+\textbf{Ranging precision} is defined as the \emph{standard deviation}
+$\sigma$ of the distance estimate in the presence of noise.
+It is related to the \textbf{signal-to-noise ratio (SNR)} of the returned
+laser signal: a stronger return relative to noise gives a more precise
+distance estimate.
+
+For the two LiDAR types, the precision scales as:
+
+\[
+  \sigma_{\text{pulse}}
+  \;\propto\;
+  \frac{c}{2}\,t_{\text{rise}}\,\sqrt{\frac{B_{\text{pulse}}}{P_{\text{peak}}}}
+  \qquad\qquad
+  \sigma_{\text{phase}}
+  \;\propto\;
+  \frac{\lambda}{4\pi}\,\sqrt{\frac{B_{\text{cw}}}{P_{\text{av}}}}
+\]
+
+\begin{notebox}
+  \textbf{Variable definitions}
+
+  \vspace{4pt}
+  \begin{tabular}{@{}l p{4.2cm} p{7.2cm}@{}}
+    \toprule
+    \textbf{Symbol} & \textbf{Name} & \textbf{Meaning / effect on precision} \\
+    \midrule
+    $\sigma_{\text{pulse}}$ & Pulsed ranging std.\ dev.
+      & Smaller = better precision \\[2pt]
+    $\sigma_{\text{phase}}$ & Phased ranging std.\ dev.
+      & Smaller = better precision \\[2pt]
+    $c$ & Speed of light ($3\times10^8$\,m/s)
+      & Fixed constant \\[2pt]
+    $t_{\text{rise}}$ & Rise time of laser pulse
+      & Shorter pulse edge $\to$ sharper timing $\to$ better precision \\[2pt]
+    $\lambda$ & Modulation wavelength
+      & Shorter $\lambda$ $\to$ finer phase ruler $\to$ better precision \\[2pt]
+    $B_{\text{pulse}}$ & Noise bandwidth (pulsed)
+      & Wider bandwidth captures more noise $\to$ worse precision \\[2pt]
+    $B_{\text{cw}}$ & Noise bandwidth (phased/CW)
+      & Same as above: wider = noisier \\[2pt]
+    $P_{\text{peak}}$ & Peak power of received pulse
+      & More power $\to$ stronger signal $\to$ better precision \\[2pt]
+    $P_{\text{av}}$ & Average power of received CW signal
+      & More power $\to$ better precision \\
+    \bottomrule
+  \end{tabular}
+  \textbf{Understanding the key terms before the table}
+
+  \textbf{Rise time $t_\text{rise}$ --- how sharp is the pulse edge?}
+  The pulsed laser signal is not a sine wave --- it is a short rectangular
+  burst (on/off), like a camera flash.  The rise time is simply how fast the
+  leading edge switches from zero to full power.  Any sharp edge in time is
+  equivalent to having high-frequency content in the signal (Fourier analysis:
+  a perfectly sharp step would require infinitely high frequencies).  So:
+  \[
+    \text{shorter } t_\text{rise}
+    \;\longleftrightarrow\;
+    \text{steeper edge}
+    \;\longleftrightarrow\;
+    \text{higher frequency content in pulse}
+  \]
+  Because a blunt, slow-rising edge makes it hard to say exactly \emph{when}
+  the pulse arrived, shorter $t_\text{rise}$ gives sharper timing and better
+  range precision.
+
+  \textbf{Noise bandwidth $B$ --- how much noise does the receiver let in?}
+  Every receiver circuit responds to a range of frequencies --- its bandwidth.
+  Noise (thermal, shot) is spread across \emph{all} frequencies, so a wider
+  bandwidth lets more noise through alongside the signal, degrading precision.
+  $B_\text{pulse}$ and $B_\text{cw}$ are the same concept but very different
+  values in practice:
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item $B_\text{pulse}$ must be \emph{wide} --- a nanosecond pulse has
+      frequency content up to $\sim$1\,GHz, so the pulsed receiver needs
+      GHz-range bandwidth to capture the sharp edges faithfully.
+    \item $B_\text{cw}$ can be \emph{narrow} --- only a small band around the
+      modulation frequency (e.g.\ 10\,MHz) needs to pass; all other
+      frequencies are noise and can be filtered out.
+  \end{itemize}
+  This is part of why phased LiDAR achieves better precision: its narrow
+  $B_\text{cw}$ admits far less noise than the wide $B_\text{pulse}$ of a
+  pulsed receiver, even at equal received power.
+
+  \textbf{The ``ruler'' --- what physical distance corresponds to one unit of
+  measurement?}
+  Every measurement needs a scale.  In each LiDAR type, one unit of the
+  measured quantity (time tick or phase radian) maps to a certain number of
+  metres:
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item \textbf{Pulsed:} one clock tick $\Delta t = 1$\,ns
+      $\to$ $\tfrac{1}{2}c\,\Delta t = 0.15$\,m.
+      So 15\,cm is one graduation on the pulsed ruler.
+      A shorter rise time shrinks this graduation.
+    \item \textbf{Phased:} one radian of phase
+      $\to$ $\tfrac{\lambda}{4\pi}$\,m.
+      With $\lambda = 30$\,m that is $\sim$2.4\,m per radian --- sounds
+      coarse, but electronics can resolve 0.001\,rad easily, giving
+      $\sim$2.4\,mm precision.  A shorter modulation wavelength $\lambda$
+      makes the ruler finer.
+  \end{itemize}
+  The $\sigma$ formulas simply say: precision = (ruler graduation)
+  $\times$ (noise-to-signal ratio).
+
+
+  \vspace{6pt}
+  The key insight is the \textbf{square-root SNR dependence}:
+  precision scales as $\sqrt{B/P}$.  To halve $\sigma$ (double the
+  precision), you need to \emph{quadruple} the received power, or quarter the
+  noise bandwidth --- improvements are expensive because of the square root.
+
+  Notice also the \textbf{structural similarity} between the two formulas:
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item Pulsed: the ``ruler'' is set by $\tfrac{c}{2}\,t_{\text{rise}}$
+      --- essentially the spatial length of the pulse edge in metres.
+      The shorter and sharper the pulse edge, the finer the timing and the
+      better the precision.
+    \item Phased: the ``ruler'' is set by $\tfrac{\lambda}{4\pi}$
+      --- one radian of phase in metres.  A shorter modulation wavelength
+      gives a finer ruler, hence better precision.  This is why phased LiDAR
+      typically outperforms pulsed LiDAR in precision at short ranges.
+  \end{itemize}
+\end{notebox}
+
+% ── Key takeaways ─────────────────────────────────────────────────────────────
+\begin{keybox}
+  \textbf{Section 2 --- Key Takeaways}
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item \textbf{Pulsed LiDAR} fires a short burst and measures round-trip
+      time: $R = \tfrac{1}{2}ct$.  Distance resolution is set by the clock
+      interval: $\Delta R = \tfrac{1}{2}c\,\Delta t$.
+    \item \textbf{Phased LiDAR} modulates a continuous beam and measures the
+      phase shift of the return: $R = \tfrac{\lambda}{4\pi}\phi$.
+      Higher precision but limited unambiguous range ($\leq \lambda/2$).
+    \item \textbf{Ranging precision} $\sigma \propto \sqrt{B/P}$: halving
+      $\sigma$ requires quadrupling received power.  Precision improves with
+      sharper pulse edges (pulsed) or shorter modulation wavelength (phased).
+    \item The \textbf{maximum range} is governed by physics beyond the timing
+      formula: laser power, beam divergence, atmosphere, target reflectance,
+      and detector sensitivity all play a role (covered fully in Section~3).
+  \end{itemize}
+\end{keybox}
+
+% ==============================================================================
+\newpage
+\section*{Section 3 \quad LiDAR Scattering \& Waveform Model}
+% ==============================================================================
+
+We now know \emph{how} LiDAR measures time or phase to get distance.
+But there is a deeper question: \emph{how much} of the emitted laser power
+actually makes it back to the sensor?
+This matters because if the returned power is too weak the measurement fails
+entirely --- range is not infinite.
+The \textbf{scattering model} traces the laser power step by step from
+transmitter to target to receiver, giving a formula for the received power
+$P_R$.
+The \textbf{waveform model} then explains what happens when a single pulse
+hits a complex target such as a tree, producing multiple overlapping returns.
+
+% ------------------------------------------------------------------------------
+\subsection*{3.1 \quad The Four-Step Power Chain}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{slide-14.jpg}
+  \caption{LiDAR scattering geometry.  The laser illuminates a footprint of
+    area $A_\text{laser}$ on the ground at range $R$.  The target scatters
+    power in all directions; only the fraction caught by the receiver aperture
+    $A_r = \pi D_r^2/4$ returns to the sensor.  The four numbered steps track
+    the power budget from transmitter to receiver.}
+\end{figure}
+
+It helps to follow the power through four physical steps:
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=4pt]
+  \item \textbf{Laser emits power $P_t$.}
+    The transmitter sends out a pulse with total power $P_t$.
+    This power spreads over a cone as it travels downward.
+
+  \item \textbf{Power incident on the target.}
+    At range $R$, the beam illuminates a circular footprint of area
+    $A_\text{laser}$ on the ground.
+    $A_\text{laser}$ is the \emph{total} area lit up by the beam --- it can
+    be large (a wide footprint at long range hits many things: ground, rocks,
+    vegetation).
+    The target itself only occupies part of that footprint; its
+    \emph{effective scattering area} $A_S \leq A_\text{laser}$ is how much
+    of the footprint it fills.
+    A small rock sitting inside a large footprint has $A_S \ll A_\text{laser}$
+    --- only a tiny fraction of the emitted power actually hits it.
+    The ratio $A_S / A_\text{laser}$ is therefore the fraction of $P_t$ that
+    reaches the target:
+    \[
+      P_\text{incident} = P_t \cdot \frac{A_S}{A_\text{laser}}
+    \]
+
+  \item \textbf{Target scatters power.}
+    The \emph{reflectance} $\rho$ ($0 \leq \rho \leq 1$) is primarily a
+    \textbf{material property} --- it describes what fraction of the incident
+    light the surface reflects rather than absorbs.
+    Dark asphalt has $\rho \approx 0.05$; white paint has $\rho \approx 0.9$.
+    The shape and roughness of the surface determine the \emph{direction} the
+    light is scattered (captured by $\Omega$), but $\rho$ itself is the
+    material's reflective fraction --- the two effects are kept separate in
+    the model.
+    The scattered power is:
+    \[
+      P_S = P_t \cdot \frac{A_S}{A_\text{laser}} \cdot \rho
+    \]
+
+  \item \textbf{Receiver captures a fraction of the scattered power.}
+    $\Omega$ is the \emph{full cone of directions} the target scatters light
+    into --- it has nothing to do with where the sensor is.  Three cases
+    illustrate the range:
+    \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+      \item \textbf{Mirror / retroreflector} --- reflects nearly all light
+        back in one narrow direction.  $\Omega$ is tiny; most scattered power
+        lands on the sensor $\to$ very strong return.  This is why road signs
+        and survey targets coated with retroreflective material give extremely
+        bright LiDAR returns.
+      \item \textbf{Rough / diffuse surface} (soil, bark, asphalt) ---
+        scatters light roughly equally in all directions of the upper
+        hemisphere.  $\Omega \approx 2\pi$ steradians.  The sensor intercepts
+        only a tiny slice $\to$ weak return.
+      \item \textbf{Most real surfaces} sit somewhere between: a preferred
+        specular peak plus a broad diffuse component.
+    \end{itemize}
+    The formula captures this directly: received fraction $= A_r /
+    (\Omega R^2)$.  Smaller $\Omega$ (more directed scatter) $\to$ larger
+    fraction back to the sensor.
+
+    The scattered power spreads over solid angle $\Omega$ at range $R$,
+    covering an area of $\Omega R^2$.
+    The receiver lens has diameter $D_r$, so its collecting area is:
+    \[
+      A_r = \frac{\pi D_r^2}{4}
+      \quad\text{(area of a circle with diameter } D_r\text{)}
+    \]
+    This is simply $\pi r^2$ with $r = D_r/2$ --- a bigger lens intercepts
+    more of the scattered sphere.
+    The fraction captured is $A_r / (\Omega R^2)$.
+
+    The two efficiency factors $\eta_\text{atm}$ and $\eta_\text{sys}$ cover
+    losses on \textbf{both the outgoing and return paths}, not just the
+    return.  They appear once at the end because $P_t$ is defined as the
+    power at the laser output; all subsequent losses --- atmosphere on the
+    way \emph{to} the target, atmosphere on the way \emph{back}, plus sensor
+    optics and electronics --- are multiplied in together as a combined
+    round-trip efficiency.
+    (If you wanted to split them: $\eta_\text{atm} = \eta_\text{atm,go}
+    \times \eta_\text{atm,return}$, but in practice a single factor is
+    measured and used.)
+    The received power is:
+    \[
+      P_R = P_t \cdot \frac{A_S}{A_\text{laser}} \cdot \rho
+            \cdot \frac{1}{\Omega R^2} \cdot \frac{\pi D_r^2}{4}
+            \cdot \eta_\text{atm}\,\eta_\text{sys}
+    \]
+\end{enumerate}
+
+% ------------------------------------------------------------------------------
+\subsection*{3.2 \quad Deriving the Full Scattering Model}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{slide-15.jpg}
+  \caption{LiDAR scattering model with labelled geometry.  $\beta_t$ is the
+    beam divergence half-angle; the illuminated footprint grows as $R^2$.
+    The scatterer disperses power uniformly into solid angle $\Omega$.}
+\end{figure}
+
+Two assumptions are made to make the model tractable:
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+  \item The emitted laser power is \textbf{uniformly distributed} within the
+    footprint (flat-top beam profile).
+  \item The scatterer \textbf{uniformly disperses} the incident power into
+    a conical solid angle $\Omega$ --- a so-called \textbf{Lambertian}
+    surface model.
+\end{enumerate}
+
+\begin{warnbox}
+  \textbf{Assumption 2 is a simplification --- real surfaces do not scatter
+  uniformly.}
+
+  The Lambertian assumption says power is spread \emph{evenly} inside
+  $\Omega$.  Real surfaces do not do this.  Ridges, bumps, and surface
+  texture mean some scatter directions get more energy than others.  Most
+  surfaces also have a \textbf{specular component} --- a stronger peak of
+  reflection in the mirror direction on top of the broad diffuse scatter.
+  The angle the beam hits the surface at further changes the pattern.
+
+  The full description of how a real surface scatters is called the
+  \textbf{BRDF} (Bidirectional Reflectance Distribution Function), which
+  gives a different value for every incoming/outgoing angle combination.
+
+  The model uses Lambertian scattering for three practical reasons:
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item The BRDF of every target in the scene is unknown in advance.
+    \item Uniform $\Omega$ makes the maths tractable and gives one
+      closed-form formula for $P_R$.
+    \item For most rough natural surfaces (soil, vegetation, asphalt) the
+      non-uniformities average out over many measurements, so the
+      Lambertian model is a reasonable mean estimate.
+  \end{itemize}
+  $\Omega$ therefore acts as a single model parameter that lumps all unknown
+  directional scattering behaviour into one number.  The formula gives a
+  useful engineering estimate, not an exact value.
+\end{warnbox}
+
+\textbf{Step 1 --- How large is the illuminated footprint at range $R$?}
+
+The laser beam is not a perfectly parallel ray --- it spreads slightly as
+it travels, forming a cone.
+The \textbf{half-angle} $\varphi$ is the angle between the centre axis of
+the beam and its outer edge, i.e.\ half the total opening angle of the cone.
+Think of a flashlight: a wide half-angle gives a broad circle of light on
+the wall; a narrow half-angle gives a tight spot.
+
+At range $R$, the beam has spread to a circular footprint of radius
+$r = R\tan\varphi \approx R\beta_t/2$, so its area is:
+\[
+  A_\text{laser}
+  = \pi r^2
+  = \frac{\pi R^2 \tan^2\!\varphi}{4}
+  = \frac{\pi R^2 \beta_t^2}{4}
+\]
+\textit{What this tells you:} $A_\text{laser}$ is what we called the
+footprint area back in Step~2 of the four-step chain.  Now we have an
+explicit formula for it.  Because $A_\text{laser} \propto R^2$, doubling
+the range quadruples the footprint --- the same total power $P_t$ is
+spread over four times the area, so the power \emph{density} on the ground
+drops to one quarter.  A narrow beam (small $\beta_t$) keeps the footprint
+small and the power density high even at long range.
+
+\begin{warnbox}
+The beam itself is \textbf{3D} --- a cone expanding in all directions as it
+travels.  The footprint it makes on the ground is \textbf{2D} --- a flat
+circle.  The formula $\pi R^2\beta_t^2/4$ assumes the \emph{same}
+half-angle $\beta_t$ in every direction around the beam axis, i.e.\ the
+cone is perfectly circular in cross-section.  If the divergence were
+different in the two perpendicular directions ($\beta_x \neq \beta_y$),
+the footprint would instead be an \textbf{ellipse} with area
+$\pi R^2 \beta_x \beta_y / 4$.  Most LiDAR systems are designed for a
+circular beam, so $\beta_x = \beta_y = \beta_t$ is a reasonable
+assumption.
+\end{warnbox}
+
+\textbf{Step 2 --- How much power reaches the sensor after scattering?}
+
+We now substitute the explicit $A_\text{laser}$ from Step~1 into the
+scattered-power formula from Step~3 of the four-step chain
+($P_S = P_t \cdot \tfrac{A_S}{A_\text{laser}} \cdot \rho$):
+\[
+  P_S
+  = P_t \cdot \frac{A_S}{\dfrac{\pi R^2 \beta_t^2}{4}} \cdot \rho
+  = \frac{4\,P_t}{\pi R^2 \beta_t^2}\,\rho\,A_S
+\]
+\textit{What this tells you:} scattered power already falls off as
+$1/R^2$ --- the bigger footprint dilutes the power hitting the target.
+This uses the Lambertian model from assumption~2: the target disperses
+the incident power uniformly across $\Omega$, so the fraction that
+eventually returns depends purely on $\rho$, $A_S$, and how large
+$A_\text{laser}$ is at that range.
+
+\textbf{Step 3 --- What power finally arrives at the receiver?}
+
+We now take the full expression from Step~4 of the four-step chain and
+substitute $A_\text{laser}$ everywhere:
+\[
+  \boxed{
+  P_R
+  = \frac{4\,P_t}{\pi R^2 \beta_t^2}
+    \cdot \rho A_S
+    \cdot \frac{1}{\Omega R^2}
+    \cdot \frac{\pi D_r^2}{4}
+    \cdot \eta_\text{atm}\,\eta_\text{sys}
+  }
+\]
+\textit{What this tells you:} this is the complete \textbf{LiDAR range
+equation}.  The two $1/R^2$ factors combine to give a $1/R^4$ penalty ---
+doubling the range reduces returned power by $16\times$.  The formula
+also makes clear which design choices help: a narrower beam ($\beta_t$
+smaller), a larger receiver lens ($D_r$ larger), a more reflective or
+larger target ($\rho A_S$ larger), and low atmospheric loss ($\eta_\text{atm}$
+close to~1) all directly increase $P_R$.  This is exactly what limits the
+maximum range mentioned back in Section~2 (the five limiting factors in the
+pulsed LiDAR notebox) --- they all appear here explicitly.
+
+\begin{notebox}
+  \textbf{Variable definitions}
+
+  \vspace{4pt}
+  \begin{tabular}{@{}l p{3.8cm} p{7.2cm}@{}}
+    \toprule
+    \textbf{Symbol} & \textbf{Name} & \textbf{Meaning} \\
+    \midrule
+    $P_t$           & Transmitted power
+      & Total laser pulse power emitted \\[2pt]
+    $R$             & Range
+      & Distance from sensor to target \\[2pt]
+    $\beta_t$       & Beam divergence
+      & Half-angle of the emitted cone; wider = larger footprint \\[2pt]
+    $A_\text{laser}$& Footprint area
+      & Illuminated area at range $R$; grows as $R^2$ \\[2pt]
+    $A_S$           & Scatterer area
+      & Effective reflecting area of the target \\[2pt]
+    $\rho$          & Reflectance
+      & Fraction of incident power reflected ($0$--$1$); dark surfaces $\approx 0$, bright $\approx 1$ \\[2pt]
+    $\Omega$        & Solid angle
+      & Cone into which the target disperses the power \\[2pt]
+    $D_r$           & Receiver diameter
+      & Aperture of the sensor lens; larger = captures more \\[2pt]
+    $\eta_\text{atm}$ & Atmospheric efficiency
+      & Loss due to absorption and scattering in air ($\leq 1$) \\[2pt]
+    $\eta_\text{sys}$ & System efficiency
+      & Loss in the sensor's own optics and electronics ($\leq 1$) \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{6pt}
+  \textbf{Key observation: the $R^4$ penalty.}
+  Notice that $P_R \propto 1/R^4$ --- the received power drops as the
+  \emph{fourth power} of range.  The $1/R^2$ comes from the footprint
+  growing (less power hits the target), and another $1/R^2$ comes from
+  the scattered power spreading over the hemisphere before the receiver
+  catches its small slice.  Doubling the range reduces returned power by
+  a factor of $16$, which is why long-range LiDAR requires powerful lasers
+  and sensitive detectors.
+\end{notebox}
+
+% ------------------------------------------------------------------------------
+\subsection*{3.3 \quad Multiple Returns --- The ``But\ldots'' Slide}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{slide-16.jpg}
+  \caption{A single LiDAR pulse hitting a tree.  The beam illuminates a
+    footprint that includes both foliage and ground.  The pulse partially
+    reflects off the tree canopy (first return), travels further to lower
+    branches (second return), and finally reflects off the ground (ground
+    return).  The receiver records a time-series of overlapping pulses rather
+    than a single clean echo.}
+\end{figure}
+
+The scattering model above assumed a single flat target at range $R$.
+In practice, a single pulse often illuminates a \emph{complex} scene
+--- a tree, a building with windows, or uneven terrain.
+Different parts of the scene are at different ranges, so the pulse
+reflects back at different times, and the receiver records a stretched,
+multi-peaked waveform instead of a single clean echo.
+
+As shown in the figure, one pulse hitting a tree produces three peaks
+in the received waveform:
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt]
+  \item A \textbf{canopy return} --- the first reflection from the top
+    of the tree.  Arrives earliest (shortest range).
+  \item A \textbf{low canopy / branch return} --- a weaker echo from
+    lower branches that the pulse partially penetrated.
+  \item A \textbf{ground return} --- the remaining pulse energy that
+    passed through all gaps in the foliage and reflected off the ground.
+    Arrives last (longest range).
+\end{itemize}
+
+Each peak in the waveform has a \textbf{height} (amplitude) and a
+\textbf{width}.  Here is what each tells you:
+
+\textbf{Peak height --- how much power came back from that surface.}
+A taller peak means more power returned.  But the height is governed
+by the full scattering formula $P_R \propto \rho\, A_S / R^4$, so a
+shorter peak could mean:
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+  \item A weakly-reflecting surface (small $\rho$), \emph{or}
+  \item A small surface area (small $A_S$), \emph{or}
+  \item Simply a surface \textbf{farther away} (large $R$, $R^4$
+    scaling).
+\end{itemize}
+In the tree example: the ground return peak is typically the weakest
+of the three, but this does \textbf{not} mean the ground is a poor
+reflector.  The ground is simply the furthest surface --- the pulse
+has already lost energy passing through canopy and branches, and the
+remaining path is longest.  You cannot conclude anything about
+reflectance from height alone without first accounting for range.
+
+\textbf{Peak width --- what the surface looks like.}
+The emitted pulse has a finite duration, so every return has a minimum
+width.  Beyond that, the echo is broadened by:
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+  \item \textbf{Surface roughness} --- height variations within the
+    footprint mean different parts reflect at slightly different ranges,
+    smearing the echo in time.
+  \item \textbf{Surface tilt} --- a tilted surface has one edge closer
+    than the other, broadening the return.
+  \item \textbf{Depth extent} --- a thick layer (dense foliage) reflects
+    from both front and back, producing a wide merged peak.
+\end{itemize}
+In the tree example: the canopy return is often broad (the canopy has
+depth and rough texture); the ground return is typically narrow and
+sharp (flat, smooth ground reflects cleanly).
+
+\textbf{You need timing, height, and width together.}
+The peak arrival time gives range; height corrected for that range gives
+reflectance; width gives surface character.  None of the three is
+meaningful in isolation --- a low, broad peak near the sensor could
+be a rough nearby surface, while an equally low but narrow peak far
+away is likely a smooth flat surface simply attenuated by $R^4$.
+This is why full-waveform LiDAR records the \emph{entire} time-series
+rather than just the first return time.
+
+% ------------------------------------------------------------------------------
+\subsection*{3.4 \quad LiDAR Waveform Model}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{slide-17.jpg}
+  \caption{LiDAR waveform model.  The emitted pulse is approximately
+    Gaussian in time.  Convolution with the scattering transfer function
+    (one Gaussian per scatterer) produces the full received waveform, which
+    is a sum of Gaussians --- one per distinct reflecting surface.}
+\end{figure}
+
+This model applies to \textbf{pulsed} LiDAR --- the sensor fires discrete
+pulses and records the returned power as a function of time.
+Phased LiDAR instead compares the phase of a continuous wave and does
+not produce a time-series waveform of this kind.
+
+\textbf{Why the emitted pulse is Gaussian in time.}
+When the laser fires, the amplitude does not switch on and off
+instantaneously --- it ramps up, reaches a peak, and ramps back down.
+The rise and fall are smooth, making the pulse shape approximately
+\textbf{Gaussian}: a bell curve in time with the peak at the centre of
+the pulse duration.
+There is no perfectly sharp pulse in practice; finite rise time (recall
+Section~2) is exactly this gradual ramp.
+
+\textbf{Why each surface return is also Gaussian.}
+When this Gaussian pulse hits a single flat surface at range $R_i$, the
+surface reflects a delayed, scaled copy of the incoming pulse back toward
+the sensor.
+The copy arrives delayed by $2R_i/c$ and scaled by the surface's
+reflectance and geometry --- but its \emph{shape} is unchanged.
+Since the incoming pulse is Gaussian, the reflected copy is also Gaussian.
+
+\textbf{Convolution --- why we use that word.}
+Mathematically, the received waveform is the \emph{convolution} of the
+emitted pulse with the \emph{scattering transfer function}.
+The scattering transfer function describes the scene: it has a spike at
+each time $\mu_i = 2R_i/c$ with height $A_i$ for each reflecting surface.
+Convolving the emitted Gaussian with each spike shifts and scales a copy
+of the Gaussian to that time --- one copy per surface.
+The key property that makes the model clean: \textbf{Gaussian $\ast$
+Gaussian = Gaussian}, so each return stays Gaussian regardless of how
+many surfaces there are.
+
+\textbf{The full waveform is the sum of all these Gaussians.}
+With $N$ reflecting surfaces, the receiver sees all their reflected copies
+arriving on top of each other.
+The total received power at any time $t$ is just their sum:
+
+\[
+  P_R(t)
+  = \sum_{i=1}^{N_\text{scatterers}}
+    A_i \, \exp\!\left(-\frac{(t - \mu_i)^2}{2\sigma_i^2}\right)
+\]
+Each term in the sum is one Gaussian peak: one surface, one range, one
+echo.  The full waveform is the overlay of all of them.
+
+\begin{notebox}
+  \textbf{Variable definitions and what each tells you}
+
+  \vspace{4pt}
+  \begin{tabular}{@{}l p{3.5cm} p{7.5cm}@{}}
+    \toprule
+    \textbf{Symbol} & \textbf{Name} & \textbf{Meaning} \\
+    \midrule
+    $P_R(t)$   & Received power waveform
+      & Full time-series of returned laser power at the receiver \\[2pt]
+    $N_\text{scatterers}$ & Number of scatterers
+      & How many distinct reflecting surfaces the pulse hit \\[2pt]
+    $A_i$      & Amplitude of return $i$
+      & How strongly surface $i$ reflected; related to $\rho$ and $A_S$ \\[2pt]
+    $\mu_i$    & Mean (centre time) of return $i$
+      & Arrival time of the $i$-th echo $\to$ range via $R_i = \tfrac{1}{2}c\mu_i$ \\[2pt]
+    $\sigma_i$ & Width of return $i$
+      & How spread-out the echo is; affected by pulse width, surface
+        roughness, and slope of the target \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{6pt}
+  By fitting this model to the measured waveform you recover $A_i$,
+  $\mu_i$, $\sigma_i$ for every peak simultaneously --- range,
+  reflectance, and surface character from a single shot.
+  See Section~3.3 for what each parameter physically means in the
+  context of the canopy example.
+\end{notebox}
+
+% ── Key takeaways ─────────────────────────────────────────────────────────────
+\begin{keybox}
+  \textbf{Section 3 --- Key Takeaways}
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item Received power follows a \textbf{four-step chain}: emit
+      $\to$ illuminate footprint $\to$ scatter at target $\to$ receiver
+      catches a fraction.
+    \item The full formula is
+      $P_R \propto \rho A_S / (\beta_t^2 R^4)$ ---
+      received power drops as $R^4$.
+      Doubling range means 16$\times$ less power returned.
+    \item \textbf{Footprint grows as $R^2$}: beam divergence $\beta_t$
+      determines how quickly the illuminated area expands with range.
+    \item A single pulse hitting a tree (or any layered scene) produces
+      \textbf{multiple returns} at different times --- canopy, branches,
+      ground.  These appear as separate Gaussian peaks in the waveform.
+    \item The received waveform is modelled as a
+      \textbf{sum of Gaussians}:
+      $P_R(t) = \sum_i A_i \exp\!\bigl(-(t-\mu_i)^2 / 2\sigma_i^2\bigr)$.
+      Fitting this model extracts range, reflectance, and surface roughness
+      for each scatterer simultaneously.
+  \end{itemize}
+\end{keybox}
+
+% ==============================================================================
+\newpage
+\section*{Section 4 \quad Point Cloud Data \& Real Hardware}
+% ==============================================================================
+
+The previous sections explained how LiDAR measures range and how the
+returned power is modelled.
+The output of a LiDAR sensor is not a single distance --- it is a
+\textbf{point cloud}: a collection of thousands or millions of 3D points,
+each carrying its own position, timestamp, and intensity value.
+This section covers what a point cloud actually contains, how it is stored,
+and what a real-world rotating LiDAR system looks like in practice.
+
+% ------------------------------------------------------------------------------
+\subsection*{4.1 \quad What a Point Cloud Contains}
+% ------------------------------------------------------------------------------
+
+A \textbf{point cloud} is simply a large collection of individual 3D points,
+where each point represents one surface location that was measured by the
+sensor.
+Think of it as a scatter plot in 3D space: the sensor fires thousands of laser
+pulses per second, each returning a range and direction, and every single
+measurement becomes one dot in the cloud.
+Enough dots together and the shape of the whole environment emerges ---
+walls, ground, trees, vehicles --- even though there is no continuous surface,
+just a dense set of discrete points.
+
+The point cloud is \textbf{not stored on the sensor itself} --- the sensor
+has no meaningful on-board memory.
+Instead it streams the raw measurements in real time to a connected computer
+(in the VLP-16 case, via Ethernet UDP packets, as covered in Section~4.2).
+The computer then assembles the stream into a point cloud file on disk in a
+standard format such as LAS or LAZ.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{slide-18.jpg}
+  \caption{Point cloud data structure.  Each individual point in the cloud
+    carries several pieces of information beyond just its 3D position.}
+\end{figure}
+
+Each individual point in a point cloud contains:
+
+\begin{itemize}[leftmargin=1.4em,itemsep=3pt]
+  \item \textbf{3D coordinates} --- either Cartesian $(x, y, z)$ or polar
+    $(R, \alpha, \theta)$ (range, azimuth, elevation).
+    In a rotating LiDAR the sensor natively measures polar coordinates;
+    these are then converted to Cartesian using the rotary encoder angles
+    recorded at the moment of each shot.
+
+  \item \textbf{Timestamp} --- the exact time the pulse was fired.
+    This is critical for moving platforms (robots, cars, aircraft): without
+    a timestamp, points recorded at different moments during motion cannot
+    be correctly placed in a global coordinate frame.
+
+  \item \textbf{Return signal strength (intensity)} --- the amplitude $A_i$
+    of the returned pulse, as discussed in Section~3.
+    This is the ``colour'' value of the point: brighter = more reflective
+    surface.
+    See the coloured-intensity image below (slide~19).
+
+  \item \textbf{Classification results} --- some systems attach a label to
+    each point indicating what type of object it likely belongs to
+    (e.g.\ ground, vegetation, building, vehicle).
+    This is the output of a post-processing step, not a raw sensor
+    measurement.
+\end{itemize}
+\begin{notebox}
+  \textbf{Point cloud file formats}
+
+  Point cloud data can be stored in several standard formats:
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item \textbf{LAS} --- the most widely used industry standard for storing
+      LiDAR point clouds.  Stores 3D coordinates, intensity, timestamp,
+      classification, and other attributes in a compact binary format.
+    \item \textbf{LAZ} --- a lossless compressed version of LAS.  Typically
+      5--10$\times$ smaller file size with no data loss; the standard choice
+      for archiving and transfer.
+    \item \textbf{E57} --- a vendor-neutral format for 3D imaging data
+      including point clouds.  Designed to be hardware-agnostic, so data
+      from any scanner can be stored without proprietary dependencies.
+  \end{itemize}
+  Note: some sensors use \emph{proprietary} formats (e.g.\ Velodyne's PCAP)
+  that require knowledge of the sensor's own geometry to convert to a
+  standard format.
+\end{notebox}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.80\textwidth]{slide-19.jpg}
+  \caption{Aerial LiDAR point cloud coloured by return intensity.  Bright
+    points = highly reflective surfaces (road markings, vehicle roofs).
+    Dark points = absorbing surfaces (vegetation, dark asphalt).  The car
+    on the forest track is clearly visible due to its high reflectivity
+    relative to the surrounding canopy.  Note: this is \emph{not} real
+    colour --- it is a false-colour map of a single intensity number per
+    point.}
+\end{figure}
+
+\begin{notebox}
+  \textbf{The image looks coloured --- but there is no real colour in LiDAR}
+
+  This is a common source of confusion.
+  A standard LiDAR sensor such as the VLP-16 uses a \textbf{single laser
+  wavelength} (903\,nm near-infrared).
+  It records \emph{one number} per point --- the return intensity $A_i$
+  (how much laser power came back).
+  There is no red, green, or blue channel; no colour information whatsoever.
+
+  What you see in the image is a \textbf{false-colour map}: the software
+  takes the intensity number and maps it to a colour scale
+  (e.g.\ high intensity $\to$ bright/white, low intensity $\to$ dark/black).
+  It is exactly like colouring a terrain map by elevation --- the colours
+  are chosen to make differences visible, they do not represent physical
+  colours of the surfaces.
+
+  The differences in brightness come entirely from \textbf{how reflective
+  each surface is at 903\,nm near-infrared}:
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item Road markings, metal surfaces, vehicle roofs $\to$ strong
+      reflectors $\to$ bright
+    \item Dark asphalt, vegetation $\to$ absorb near-IR $\to$ dark
+    \item The car stands out brightly against the dark canopy for exactly
+      this reason --- not because it has a different colour, but because
+      its surface reflects far more 903\,nm laser power
+  \end{itemize}
+
+  The multi-wavelength LiDAR mentioned in Section~1.3 is a separate,
+  more advanced technique where two wavelengths are fired simultaneously
+  and the \emph{ratio} of the two intensity values is used to classify
+  materials.  But that is not what is shown here --- this image is purely
+  single-wavelength intensity, false-coloured for visualisation.
+\end{notebox}
+
+
+% ------------------------------------------------------------------------------
+\subsection*{4.2 \quad Real Hardware: Velodyne VLP-16}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{slide-20.jpg}
+  \caption{Velodyne VLP-16 ``Puck'' system setup.  The sensor connects to a
+    laptop via Ethernet (UDP packets).  An optional INS/GPS unit provides
+    georeferencing.  The power supply runs from 9--18\,V.}
+\end{figure}
+
+The \textbf{Velodyne VLP-16} (nicknamed the ``Puck'') is a compact
+rotating LiDAR sensor widely used in robotics and autonomous vehicles.
+Its key specifications:
+
+\begin{itemize}[leftmargin=1.4em,itemsep=3pt]
+  \item \textbf{16 laser/detector pairs} stacked at 16 different fixed
+    \textbf{elevation angles}, ranging from $-15^\circ$ to $+15^\circ$
+    in 2$^\circ$ steps.
+    As the head spins 360$^\circ$ horizontally, all 16 lasers fire at
+    every azimuth step --- not one per rotation, but all 16 \emph{on
+    every shot}.
+    One full rotation therefore produces \textbf{16 concentric rings} of
+    points, one ring per elevation angle, stacked vertically on top of
+    each other.
+    More lasers = more vertical rings = denser coverage of the scene
+    height.
+    The head completes roughly 10--20 full rotations per second.
+
+  \item \textbf{Fire rate of 18.08\,kHz} --- each laser fires 18,080 times
+    per second.  With 16 lasers, this gives up to
+    $16 \times 18{,}080 \approx \mathbf{300{,}000}$ \textbf{data points
+    per second}.
+
+  \item \textbf{Data packets every 1.3\,ms} --- by default, data
+    accumulates over 24 firing cycles before being sent as a UDP packet
+    over Ethernet.  This means the host computer receives a burst of
+    points every 1.3\,ms.
+
+  \item \textbf{Interface: Ethernet (UDP)} --- the sensor streams data
+    directly over a standard network cable.  No special hardware is
+    needed on the host side.
+
+  \item \textbf{Storage: PCAP format} --- the raw UDP stream is typically
+    captured in PCAP (packet capture) format.  Converting to LAS or
+    another standard format requires precise knowledge of the sensor's
+    own mounting position, orientation, and timing, since the PCAP
+    contains raw firing angles and distances --- not fully-formed 3D
+    coordinates.
+
+  \item \textbf{Optional INS/GPS} --- an Inertial Navigation System
+    (INS) measures the sensor's acceleration and rotation continuously,
+    tracking its position and orientation at all times.
+    GPS adds absolute position in the world.
+    Together they answer: \emph{where was the sensor, and which way was
+    it pointing, at the exact moment each pulse fired?}
+
+    This is \textbf{optional for a static sensor} --- if the sensor sits
+    on a tripod at a known fixed location, its position and orientation
+    are already known and no INS/GPS is needed.
+
+    It becomes \textbf{essential for a moving platform} (robot, car,
+    aircraft): without knowing the sensor's exact position at each
+    firing moment, points recorded at different instants during motion
+    get placed in wrong locations and the resulting map smears or
+    distorts.
+    The timestamp on each measurement packet is what links a LiDAR point
+    to the correct INS/GPS position at that exact moment.
+\end{itemize}
+
+% ------------------------------------------------------------------------------
+\subsection*{4.3 \quad VLP-16 Data Packet Structure}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{slide-21.jpg}
+  \caption{VLP-16 UDP data packet structure.  Each packet is 1248 bytes
+    and contains two firing sequences, each with 12 data blocks.  Every
+    data block stores one azimuth angle and 32 channel measurements
+    (distance + reflectivity per channel).}
+\end{figure}
+
+Each UDP packet sent by the VLP-16 has a fixed size of \textbf{1248 bytes},
+structured as follows:
+
+\begin{itemize}[leftmargin=1.4em,itemsep=3pt]
+  \item \textbf{42-byte header} --- network and protocol overhead (IP/UDP
+    headers).
+
+  \item \textbf{1200 bytes of data} --- $12 \times 2$ bytes (flag) $+$
+    $2$ bytes (azimuth) $+$ $32 \times (2$ bytes distance $+$ 1 byte
+    reflectivity$)$ per data block, across 12 blocks per firing sequence
+    and 2 firing sequences per packet.
+    Each data block contains one azimuth reading and 32 channel
+    measurements (distance and reflectivity for each of the 16 lasers,
+    two returns per laser).
+
+  \item \textbf{4-byte timestamp} --- GPS-synchronised time of the packet.
+
+  \item \textbf{2-byte factory field} --- sensor model and return mode
+    identifier.
+\end{itemize}
+
+\begin{notebox}
+  \textbf{Why does the packet structure matter?}
+
+  When you capture raw PCAP data from the VLP-16, you receive a stream
+  of these 1248-byte packets.  To reconstruct a 3D point cloud you must:
+  \begin{enumerate}[leftmargin=1.4em,itemsep=2pt]
+    \item Parse each packet to extract the azimuth angle and the 32
+      distance/reflectivity values per block.
+    \item Know the \emph{vertical angles} of each of the 16 laser beams
+      (factory-calibrated, stored in the sensor's own memory).
+    \item Convert each (range, azimuth, elevation) polar measurement to
+      Cartesian $(x, y, z)$.
+    \item Apply the timestamp and any platform motion correction
+      (from INS/GPS) to place points in a global frame.
+  \end{enumerate}
+  This is why conversion from PCAP to LAS requires ``precise knowledge
+  about the sensor's own position'' as stated on the slide --- the raw
+  packet contains angles and distances, not world coordinates.
+\end{notebox}
+
+% ── Key takeaways ─────────────────────────────────────────────────────────────
+\begin{keybox}
+  \textbf{Section 4 --- Key Takeaways}
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item Each point in a cloud carries: \textbf{3D position},
+      \textbf{timestamp}, \textbf{return intensity} (reflectivity), and
+      optionally a \textbf{classification label}.
+    \item Standard formats: \textbf{LAS} (industry standard),
+      \textbf{LAZ} (compressed LAS), \textbf{E57} (vendor-neutral).
+      Proprietary formats like PCAP require sensor-specific conversion.
+    \item The Velodyne VLP-16 fires \textbf{16 lasers} at 18.08\,kHz
+      $\to$ up to 300,000 points/second, streamed as 1248-byte UDP
+      packets every 1.3\,ms.
+    \item Raw packets contain \textbf{polar measurements} (range +
+      azimuth).  Converting to 3D world coordinates requires the sensor's
+      factory-calibrated vertical beam angles and, for a moving platform,
+      GPS/INS timestamps.
+  \end{itemize}
+\end{keybox}
+
+% ==============================================================================
+\newpage
+\section*{Section 5 \quad Robot Position Estimation with LiDAR}
+% ==============================================================================
+
+We now apply everything from the previous sections to a concrete engineering
+problem: a mobile robot equipped with a LiDAR must locate other robots in its
+environment.
+The robot sees a point cloud, must identify which clusters of points belong to
+which robot, fit a geometric model to each cluster, and then track the robots
+over time using a Kalman filter.
+This section follows that pipeline step by step.
+
+% ------------------------------------------------------------------------------
+\subsection*{5.1 \quad Setup and Sensor Configuration}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{slide-22.jpg}
+  \caption{Mobile robots moving about in an environment, each equipped with a
+    LiDAR.  The map on the right is an \emph{occupancy grid} (also called a
+    cost map): each cell records whether that region of space is occupied,
+    free, or unknown.  The robot uses this to plan collision-free paths.}
+\end{figure}
+
+The robots carry a \textbf{Laser Range Finder (LRF)} --- a 2D rotating LiDAR
+that sweeps a single horizontal plane.
+This is simpler than the full 3D VLP-16 from Section~4: rather than 16
+stacked elevation angles, it fires at one fixed elevation and produces a
+single ring of range measurements as it rotates.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-23.jpg}
+  \caption{LRF sensor configuration viewed from above.  The robot body is
+    the orange circle at the centre.  \textbf{Two LRF sensors} (blue dots)
+    are mounted on opposite sides of the robot --- one at the front and one
+    at the rear.  Each sensor sweeps its own arc (green wedges) in the scan
+    direction, measuring range $d_i$ and angle $\alpha_i$ to each point it
+    hits.  The small white wedge is the \textbf{blind spot}: the narrow
+    gap between the two sensor fields of view where neither sensor can see,
+    typically blocked by the robot body itself.}
+\end{figure}
+
+A single 2D LRF typically only covers roughly 270° of arc, leaving a
+blind spot behind it.
+By mounting \textbf{two sensors on opposite sides} of the robot body, the
+combined coverage is nearly full 360°, with only two small blind spots
+where the robot body blocks each sensor.
+
+At each scan sample $k$, the combined sensor pair produces a
+\textbf{point cloud} in polar coordinates:
+\[
+  S_k = \{(d_{i,k},\, \alpha_{i,k})\}, \quad i = 0, 1, \ldots, N_S
+\]
+where $d_{i,k}$ is the measured range and $\alpha_{i,k}$ is the angle of the
+$i$-th beam at time step $k$, with measurements from both sensors merged
+into one set.
+
+% ------------------------------------------------------------------------------
+\subsection*{5.2 \quad Noise Model for the Measurements}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{slide-24.jpg}
+  \caption{\textbf{Left:} full scan of the room.
+    The \textbf{green dot} (lrf01) and \textbf{blue dot} (lrf02) mark the
+    positions of the two LRF sensors mounted on the scanning robot ---
+    they appear close together because both sensors sit on the same robot
+    body and the room is large.
+    The \textbf{red points} are all the measurements from both sensors
+    combined: the large continuous cloud is the room walls; the small
+    crescent-shaped clusters scattered around are the \emph{other} robots
+    being detected.
+    \textbf{Right:} zoomed view of the detection task.
+    The scanning robot is at known position and heading $[x_0, y_0, \alpha_0]$.
+    Three target robots have been detected at positions $[x_i,y_i]$,
+    $[x_j,y_j]$, $[x_k,y_k]$ by fitting discs to the crescent clusters.
+    The arrows show the line of sight from the scanning robot to each
+    detected robot.}
+\end{figure}
+
+Every measurement is affected by noise.
+The \emph{true} polar coordinates of a point are $(d_{i,k}, \alpha_{i,k})$;
+the \emph{measured} (noisy) values are:
+\[
+  \tilde{S}_k
+  = \bigl(\bar{d}_{i,k} + \nu_{d,k},\;
+          \bar{\alpha}_{i,k} + \nu_{\alpha,k}\bigr)
+\]
+where the noise terms are independent zero-mean Gaussians:
+\[
+  \nu_{d,k} \sim \mathcal{N}(0,\,\sigma_{\nu_d}^2)
+  \qquad
+  \nu_{\alpha,k} \sim \mathcal{N}(0,\,\sigma_{\nu_\alpha}^2)
+\]
+
+\begin{notebox}
+  \textbf{What the noise model tells you.}
+  The range measurement $\bar{d}_{i,k}$ has Gaussian noise with standard
+  deviation $\sigma_{\nu_d}$ --- a typical LiDAR might have
+  $\sigma_{\nu_d} \approx 2$--$5$\,cm.
+  The angle measurement $\bar{\alpha}_{i,k}$ has independent Gaussian noise
+  with standard deviation $\sigma_{\nu_\alpha}$ --- typically a fraction of
+  a degree.
+  The two noises are \textbf{uncorrelated} (independent): an error in the
+  range measurement tells you nothing about the angle error.
+  This independence is captured by the diagonal noise covariance matrix
+  introduced in Section~5.3.
+\end{notebox}
+
+% ------------------------------------------------------------------------------
+\subsection*{5.3 \quad Uncertainty Ellipsoid: Polar to Cartesian}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-25.jpg}
+  \caption{Uncertainty ellipsoid for a single LiDAR point.  The red dot is
+    the true point $\boldsymbol{\xi}_i$; the blue dot is the noisy
+    measurement $\bar{\boldsymbol{\xi}}_i$.  In polar coordinates the
+    uncertainty region is a rectangle; after the nonlinear polar-to-Cartesian
+    transformation it becomes a tilted ellipse in $(x,y)$ space.}
+\end{figure}
+
+\textbf{Step 1 --- Why do we need to convert to Cartesian at all?}
+
+The LRF natively produces polar measurements $(d_i, \alpha_i)$.
+Everything downstream --- clustering, disc fitting, and the Kalman filter
+--- works in \textbf{Cartesian} $(x, y)$ coordinates.
+So we must convert each polar point to Cartesian.
+The conversion is:
+\[
+  \boldsymbol{\xi}_i
+  = \begin{bmatrix} x_i \\ y_i \end{bmatrix}
+  = \begin{bmatrix} \bar{d}_i \cos\bar{\alpha}_i \\
+                    \bar{d}_i \sin\bar{\alpha}_i \end{bmatrix}
+\]
+This is straightforward for the \emph{position}.
+The problem arises when we also want to convert the \emph{uncertainty}.
+
+\textbf{Step 2 --- Why can we not just plug the noise directly into the
+conversion formula?}
+
+The conversion involves $\sin$ and $\cos$ --- it is \textbf{nonlinear}.
+With a nonlinear function you cannot simply say ``range noise
+$\sigma_{\nu_d}$ maps to Cartesian noise $\sigma_{\nu_d}$'' because the
+mapping from polar error to Cartesian error changes depending on the
+current angle $\alpha_i$.
+A range error at $\alpha_i = 0$ moves the point purely in $x$; the same
+range error at $\alpha_i = 90^\circ$ moves it purely in $y$.
+The direction and magnitude of the Cartesian uncertainty depend on
+\emph{where the beam is pointing} --- and you cannot capture that with a
+simple scalar multiplication.
+
+\textbf{Step 3 --- The noise covariance matrix $\Sigma$ (defined in polar).}
+
+First, we describe the uncertainty \emph{in the polar domain}.
+Since range and angle errors are independent Gaussians (from Section~5.2),
+the \textbf{polar noise covariance matrix} is diagonal:
+\[
+  \Sigma
+  = \begin{bmatrix} \sigma_{\nu_d}^2 & 0 \\
+                    0 & \sigma_{\nu_\alpha}^2 \end{bmatrix}
+\]
+This matrix is \textbf{in polar coordinates} --- it is a $2\times2$ matrix
+whose axes are range $d$ and angle $\alpha$, not $x$ and $y$.
+The off-diagonal zeros reflect that range and angle errors are completely
+independent: knowing one error tells you nothing about the other.
+In polar space, the uncertainty region at probability level $p$ is therefore
+a simple \textbf{axis-aligned rectangle}: $\pm\sigma_{\nu_d}$ in range,
+$\pm\sigma_{\nu_\alpha}$ in angle.
+
+\textbf{Step 4 --- The Jacobian linearises the conversion.}
+
+To transform $\Sigma$ from polar into Cartesian we linearise the conversion
+at the current measured point $(\bar{d}_i, \bar{\alpha}_i)$ --- exactly the
+same idea as the EKF Jacobian from Lecture~4.
+The Jacobian $J$ is the matrix of partial derivatives of $(x, y)$ with
+respect to $(d, \alpha)$:
+\[
+  J(\bar{d}_i, \bar{\alpha}_i)
+  = \frac{\partial\,[x,\,y]}{\partial\,[d,\,\alpha]}
+  = \begin{bmatrix}
+      \cos\bar{\alpha}_i & -\bar{d}_i \sin\bar{\alpha}_i \\
+      \sin\bar{\alpha}_i &  \bar{d}_i \cos\bar{\alpha}_i
+    \end{bmatrix}
+\]
+Each column tells you how a small nudge in one polar variable moves the
+Cartesian point:
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+  \item \textbf{First column} ($\partial/\partial d$): a small increase in
+    range moves the point in the direction $[\cos\alpha_i,\sin\alpha_i]$
+    --- directly along the beam.
+  \item \textbf{Second column} ($\partial/\partial\alpha$): a small increase
+    in angle rotates the point perpendicular to the beam by
+    $\bar{d}_i\cdot[-\sin\alpha_i,\cos\alpha_i]$ --- the $\bar{d}_i$ factor
+    means this grows with range.
+\end{itemize}
+The Cartesian covariance is then approximated as:
+\[
+  \text{Cov}_\text{Cartesian} \approx J\,\Sigma\,J^\top
+\]
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.68\textwidth]{slide-26.jpg}
+  \caption{Slide~26: the uncertainty ellipse in Cartesian coordinates.
+    The blue dot $\bar{\boldsymbol{\xi}}_{i,k}$ is the noisy Cartesian
+    measurement; the red dot $\boldsymbol{\xi}_{i,k}$ is the true position.
+    The ellipse is the set of all Cartesian points that are consistent with
+    the measurement at probability level $p$.
+    $\sigma_{\nu_d}$ controls the \emph{radial} (along-beam) axis;
+    $\sigma_{\nu_\alpha}$ controls the \emph{tangential} (across-beam) axis,
+    which grows with range because of the $\bar{d}_i$ factor in $J$.}
+\end{figure}
+
+\textbf{Step 5 --- Uncertainty ellipsoid in polar coordinates.}
+
+We now ask: \emph{given a noisy measurement $(\bar{d}_i, \bar{\alpha}_i)$,
+what is the region of true values $(d_i, \alpha_i)$ that could plausibly
+have produced it?}
+The answer comes from the noise model in Section~5.2: the errors
+$\nu_d = \bar{d}_i - d_i$ and $\nu_\alpha = \bar{\alpha}_i - \alpha_i$
+are independent Gaussians.
+From statistics: the sum of $n$ independent \emph{squared standardised}
+Gaussians follows a \textbf{chi-squared distribution} with $n$ degrees of
+freedom.
+Setting that sum equal to a threshold $\chi^2_n(1-p)$ draws a
+boundary that encloses $(1-p)$ of the probability mass --- the
+\textbf{confidence ellipsoid}:
+\[
+  \begin{bmatrix} \bar{d}_i - d_i & \bar{\alpha}_i - \alpha_i \end{bmatrix}
+  \Sigma^{-1}
+  \begin{bmatrix} \bar{d}_i - d_i \\ \bar{\alpha}_i - \alpha_i \end{bmatrix}
+  = \chi^2_n(1-p)
+\]
+
+\textit{Expanding the matrix form.}
+Because $\Sigma$ is diagonal (Step~3), so is its inverse:
+\[
+  \Sigma^{-1}
+  = \begin{bmatrix}
+      1/\sigma_{\nu_d}^2 & 0 \\
+      0 & 1/\sigma_{\nu_\alpha}^2
+    \end{bmatrix}
+\]
+Multiplying out the quadratic form gives a plain scalar equation:
+\[
+  \frac{(\bar{d}_i - d_i)^2}{\sigma_{\nu_d}^2}
+  \;+\;
+  \frac{(\bar{\alpha}_i - \alpha_i)^2}{\sigma_{\nu_\alpha}^2}
+  \;=\; \chi^2_n(1-p)
+\]
+This is exactly the standard ellipse equation
+$\dfrac{X^2}{a^2}+\dfrac{Y^2}{b^2}=1$, with semi-axis lengths:
+\[
+  a = \sigma_{\nu_d}\sqrt{\chi^2_n(1-p)}, \qquad
+  b = \sigma_{\nu_\alpha}\sqrt{\chi^2_n(1-p)}
+\]
+Because there is \emph{no cross-term} $(\bar{d}_i-d_i)(\bar{\alpha}_i-\alpha_i)$
+the two axes point exactly along $d$ and $\alpha$: the ellipse is
+\textbf{axis-aligned} --- zero tilt.
+This makes sense: range and angle errors are independent (Step~3),
+so they do not ``push'' each other sideways.
+
+\begin{notebox}
+  \textbf{Understanding the chi-squared threshold $\chi^2_n(1-p)$}
+
+  \begin{itemize}[leftmargin=1.2em,itemsep=3pt]
+    \item $n = 2$: we have two polar variables ($d$ and $\alpha$), so
+      $n=2$ degrees of freedom.
+    \item $p$ is the probability we are willing to \emph{exclude}: choosing
+      $p=0.05$ means we want a \textbf{95\,\% confidence region}.
+    \item Numerical example: $\chi^2_2(0.95) \approx 5.99$.
+      The semi-axis lengths become
+      $\sigma_{\nu_d}\sqrt{5.99} \approx 2.45\,\sigma_{\nu_d}$
+      and
+      $\sigma_{\nu_\alpha}\sqrt{5.99} \approx 2.45\,\sigma_{\nu_\alpha}$.
+    \item Think of it as a \emph{scaling knob}: a larger $\chi^2$ gives a
+      bigger ellipse (more probability captured); a smaller $\chi^2$ gives
+      a smaller ellipse (less probability but tighter bound).
+    \item \textbf{Physical reading}: the ellipse is centred on the noisy
+      measurement $(\bar{d}_i,\bar{\alpha}_i)$.
+      The true point $(d_i, \alpha_i)$ lies inside this ellipse
+      with 95\,\% probability.
+  \end{itemize}
+\end{notebox}
+
+\textbf{Step 6 --- Uncertainty ellipsoid in Cartesian coordinates.}
+
+Step~5 gives a clean axis-aligned ellipse \emph{in polar space}.
+Now we want the equivalent region in Cartesian $(x,y)$, because that is
+what clustering, disc fitting, and the Kalman filter all work with.
+
+\textit{How do we get there?}
+From Step~4, the Jacobian $J$ tells us how a small polar error
+$\Delta m_i = [\bar{d}_i - d_i,\;\bar{\alpha}_i - \alpha_i]^\top$
+maps to a Cartesian error:
+\[
+  \underbrace{(\bar{\boldsymbol{\xi}}_i - \boldsymbol{\xi}_i)}_{\text{Cartesian error}}
+  \;\approx\;
+  J \;\underbrace{[\bar{d}_i-d_i,\;\bar{\alpha}_i-\alpha_i]^\top}_{\text{polar error}}
+\]
+Substituting the polar error (expressed in terms of the Cartesian error)
+back into Step~5's quadratic form and rearranging replaces $\Sigma^{-1}$
+with the \textbf{Cartesian precision matrix} $J\Sigma^{-1}J^\top$:
+\[
+  (\bar{\boldsymbol{\xi}}_i - \boldsymbol{\xi}_i)^\top
+  \; J \Sigma^{-1} J^\top \;
+  (\bar{\boldsymbol{\xi}}_i - \boldsymbol{\xi}_i)
+  = \chi^2_n(1-p)
+\]
+The $\chi^2_n(1-p)$ threshold is \textbf{unchanged} ---
+changing coordinate systems does not change probability levels.
+
+\textit{Why is this ellipse now tilted instead of axis-aligned?}
+In Step~5, $\Sigma^{-1}$ was diagonal: its axes pointed along $d$ and
+$\alpha$ with zero tilt.
+After multiplying by $J$ and $J^\top$, the matrix $J\Sigma^{-1}J^\top$
+is \textbf{no longer diagonal}: it contains $\sin\bar{\alpha}_i$ and
+$\cos\bar{\alpha}_i$ (evaluated at the actual beam angle), which
+\emph{mixes} the range and angle uncertainties.
+The natural axes of this new matrix are:
+\begin{itemize}[leftmargin=1.2em,itemsep=6pt]
+  \item \textbf{Radial axis} --- along the beam, direction
+    $[\cos\bar{\alpha}_i,\,\sin\bar{\alpha}_i]$.
+    This axis captures the \emph{range} error $\sigma_{\nu_d}$.
+    Range noise is already measured in \emph{metres}: if the sensor
+    reads the distance 3\,cm too long, the point moves 3\,cm directly
+    along the beam --- regardless of whether the object is 2\,m or
+    20\,m away.
+    So the half-length of this axis is simply $\approx\sigma_{\nu_d}\sqrt{\chi^2}$
+    --- \textbf{constant, does not grow with range}.
+
+  \item \textbf{Tangential axis} --- perpendicular to the beam, direction
+    $[-\sin\bar{\alpha}_i,\,\cos\bar{\alpha}_i]$.
+    This axis captures the \emph{angle} error $\sigma_{\nu_\alpha}$.
+    Angle noise is measured in \emph{radians} --- but what we care about
+    is the sideways position error in \emph{metres}.
+    Think of the object sitting at the tip of the laser beam: if the
+    beam swings by a small angle $\sigma_{\nu_\alpha}$, the tip traces
+    an arc of length:
+    \[
+      \text{arc} = \bar{d}_i \times \sigma_{\nu_\alpha}
+    \]
+    (arc length = radius $\times$ angle).
+    At 2\,m range a $0.01$\,rad error moves the point $0.02$\,m
+    sideways; at 20\,m the same $0.01$\,rad moves it $0.20$\,m
+    sideways.
+    So the half-length is $\approx\bar{d}_i\,\sigma_{\nu_\alpha}\sqrt{\chi^2}$
+    --- \textbf{grows linearly with range}.
+\end{itemize}
+Unless the beam points exactly along the $x$- or $y$-axis, neither of
+these directions is horizontal or vertical --- the ellipse is therefore
+\textbf{tilted} by exactly the beam angle $\bar{\alpha}_i$.
+
+\begin{notebox}
+  \textbf{Comparing the two ellipsoids side by side}
+
+  \medskip
+  \begin{tabular}{@{} p{2.6cm} p{4.8cm} p{5.0cm} @{}}
+    \toprule
+    & \textbf{Polar (Step 5)} & \textbf{Cartesian (Step 6)} \\
+    \midrule
+    Error vector
+      & $[\bar{d}_i-d_i,\;\bar{\alpha}_i-\alpha_i]^\top$
+      & $\bar{\boldsymbol{\xi}}_i - \boldsymbol{\xi}_i$ \\[4pt]
+    Weight matrix
+      & $\Sigma^{-1}$ (diagonal)
+      & $J\Sigma^{-1}J^\top$ (full, off-diagonal) \\[4pt]
+    Ellipse tilt
+      & Axis-aligned along $d$, $\alpha$
+      & Tilted by beam angle $\bar{\alpha}_i$ \\[4pt]
+    Radial half-axis
+      & $\sigma_{\nu_d}\sqrt{\chi^2}$
+      & $\sigma_{\nu_d}\sqrt{\chi^2}$ (same) \\[4pt]
+    Tangential half-axis
+      & $\sigma_{\nu_\alpha}\sqrt{\chi^2}$
+      & $\bar{d}_i\,\sigma_{\nu_\alpha}\sqrt{\chi^2}$ \emph{(grows!)} \\[4pt]
+    \bottomrule
+  \end{tabular}
+
+  \medskip
+  \textbf{Why does the tangential axis grow?}
+  An angular error of 1\,radian at range $\bar{d}_i$ sweeps an arc of
+  length $\bar{d}_i \times 1\,\text{rad} = \bar{d}_i$ metres.
+  So the same angle noise produces a \emph{larger sideways position
+  error} the further away the object is.
+  At short range the ellipse is compact in all directions (you know
+  both distance and lateral position well).
+  At long range it becomes very elongated sideways: you know the
+  distance to the object accurately, but its lateral position is
+  increasingly uncertain --- the tangential axis keeps growing while
+  the radial axis stays fixed.
+\end{notebox}
+
+% ------------------------------------------------------------------------------
+\subsection*{5.4 \quad Recognising Objects: Clustering and Disc Fitting}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{slide-27.jpg}
+  \caption{DBSCAN clustering steps: (1) select a random point, (2) group
+    nearby points within radius $\varepsilon$, (3) merge overlapping groups,
+    repeat until all points are assigned.  The result (4) is a set of
+    labelled clusters, one per detected object.}
+\end{figure}
+
+Given the raw point cloud $S_k$, the first task is to find which points
+belong to which robot.
+This involves three steps:
+
+\textbf{Step 1 --- Clustering with DBSCAN.}
+
+\textbf{DBSCAN} (Density-Based Spatial Clustering of Applications with
+Noise) groups points by how densely packed they are.
+It has two parameters:
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+  \item $\varepsilon$ --- the \emph{neighbourhood radius}: how close two
+    points must be to be considered neighbours.
+  \item \textsc{MinPts} --- the \emph{minimum neighbour count}: how many
+    neighbours a point needs to be able to ``grow'' a cluster.
+\end{itemize}
+
+\textit{How it works, step by step:}
+\begin{enumerate}[leftmargin=1.6em,itemsep=3pt]
+  \item Pick any unvisited point $P$.
+  \item Count how many other points lie within radius $\varepsilon$ of
+    $P$ --- call this the \emph{neighbourhood} of $P$.
+  \item If the neighbourhood contains \emph{fewer} than \textsc{MinPts}
+    points: mark $P$ as \textbf{noise} for now (it may still be rescued
+    later by another cluster passing through it).
+  \item If the neighbourhood contains \emph{at least} \textsc{MinPts}
+    points: $P$ is a \textbf{core point} --- start a new cluster and
+    add $P$ plus all its neighbours to it.
+  \item For every new point $Q$ just added to the cluster: look at
+    $Q$'s own neighbourhood.
+    If $Q$ is also a core point ($\geq$\,\textsc{MinPts} neighbours),
+    pull \emph{its} neighbours into the cluster too.
+    Keep doing this until no new points can be added --- the cluster
+    has been fully expanded.
+  \item Move to the next unvisited point and repeat from step~1.
+\end{enumerate}
+
+After all points are visited, every point is either:
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+  \item \textbf{Core point}: $\geq$\,\textsc{MinPts} neighbours, can expand
+    the cluster.
+  \item \textbf{Border point}: $<$\,\textsc{MinPts} neighbours, but
+    within $\varepsilon$ of a core point --- part of the cluster, just
+    can't grow it further.
+  \item \textbf{Noise}: not within $\varepsilon$ of any core point ---
+    excluded entirely.
+\end{itemize}
+
+\begin{notebox}
+  \textbf{Why DBSCAN works well for LiDAR point clouds}
+
+  Each robot in the scan reflects several LiDAR points on its surface
+  (an arc of points), all close together.
+  Between two robots there is empty space --- no LiDAR returns.
+  DBSCAN exploits exactly this:
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item Points on the \emph{same robot} are close (within $\varepsilon$)
+      $\rightarrow$ they join the same cluster.
+    \item Points on \emph{different robots} are separated by a gap larger
+      than $\varepsilon$ $\rightarrow$ they form separate clusters.
+    \item A single stray reflection has no neighbours
+      $\rightarrow$ labelled noise and ignored.
+  \end{itemize}
+  The result is one cluster per robot --- no need to know in advance how
+  many robots there are (unlike k-means, which requires you to specify
+  the number of groups).
+\end{notebox}
+\clearpage
+\subsection{Disc Fitting}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-28.jpg}
+  \caption{Disc model for a robot cluster.  Given $N_K$ noisy 2D points
+    $\xi_{i,k}$ belonging to cluster $K$, find the centre
+    $\xi_{c,k} = (x_{c,k}, y_{c,k})$ and radius $\rho$ of the best-fitting
+    disc.}
+\end{figure}
+
+Each robot is modelled as a \textbf{disc} (circle in 2D).
+Given $N_K$ noisy Cartesian points $\boldsymbol{\xi}_{i,k}$
+assigned to cluster $K$, the best-fitting disc centre
+$\boldsymbol{\xi}_{c,k}$ and radius $\rho$ are found by minimising:
+\[
+  \min_{\boldsymbol{\xi}_{c,k},\,\rho}
+  \sum_{i=0}^{N_K}
+  \Bigl[
+    (\boldsymbol{\xi}_{c,k} - \boldsymbol{\xi}_{i,k})^\top
+    (\boldsymbol{\xi}_{c,k} - \boldsymbol{\xi}_{i,k})
+    - \rho^2
+  \Bigr]^2
+\]
+This is a least-squares problem: minimise the sum of squared differences
+between the squared distances from each point to the candidate centre and
+the squared radius.
+
+\begin{notebox}
+  \textbf{What are we trying to minimise, and what do we get?}
+
+  We are trying to find the \textbf{disc centre $(x_c, y_c)$ and radius
+  $\rho$} that best explain all the noisy points in the cluster.
+  The cost function penalises every point that does \emph{not} sit
+  exactly on the circle: if a point is too far from the centre (further
+  than $\rho$) or too close, it adds to the error.
+  Minimising the total error over all $N_K$ points gives the
+  \textbf{best-fit circle} through the cluster.
+
+  What we get out: the disc centre $(x_{c,k}, y_{c,k})$, which is the
+  \textbf{estimated robot position} at time step $k$.
+  This is then passed to the Kalman filter for tracking.
+\end{notebox}
+
+\textbf{Reformulating as a linear problem.}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{slide-29.jpg}
+  \caption{Reformulation of the disc-fitting problem as a linear least-squares
+    system $\min_p \|X^\top p - q\|_2$.  The matrix $X$ and vector $q$ are
+    built from the measured point coordinates; $p$ contains the unknowns
+    (centre and radius).}
+\end{figure}
+
+\textit{Why is the original problem nonlinear?}
+A perfect circle satisfies $(x_i - x_c)^2 + (y_i - y_c)^2 = \rho^2$ for
+every point $i$.
+The unknowns $x_c$, $y_c$ sit \emph{inside} squared terms, so minimising
+the error directly requires iterative nonlinear solvers.
+The trick is to expand the bracket algebraically and rearrange so that
+the unknowns appear only \emph{multiplied by known numbers} (i.e.\
+linearly).
+
+\textit{The algebraic trick --- expand and rearrange.}
+Start from the ideal circle equation for point $i$:
+\[
+  (x_{i,k} - x_{c,k})^2 + (y_{i,k} - y_{c,k})^2 = \rho^2
+\]
+Expand:
+\[
+  x_{i,k}^2 - 2x_{i,k}x_{c,k} + x_{c,k}^2
+  + y_{i,k}^2 - 2y_{i,k}y_{c,k} + y_{c,k}^2 = \rho^2
+\]
+Move all the \emph{known} data terms ($x_{i,k}^2 + y_{i,k}^2$) to the
+right and all \emph{unknown} terms to the left:
+\[
+  2x_{c,k}\cdot x_{i,k}
+  + 2y_{c,k}\cdot y_{i,k}
+  + \underbrace{(\rho^2 - x_{c,k}^2 - y_{c,k}^2)}_{\text{one combined unknown}}
+  \cdot 1
+  = x_{i,k}^2 + y_{i,k}^2
+\]
+Now define three new unknowns that group the messy parts together:
+\[
+  p_1 = 2x_{c,k}, \qquad
+  p_2 = 2y_{c,k}, \qquad
+  p_3 = \rho^2 - x_{c,k}^2 - y_{c,k}^2
+\]
+The equation for point $i$ becomes:
+\[
+  p_1 \cdot x_{i,k} \;+\; p_2 \cdot y_{i,k} \;+\; p_3 \cdot 1
+  \;=\; x_{i,k}^2 + y_{i,k}^2
+\]
+This is \textbf{linear} in $(p_1, p_2, p_3)$ --- all the unknowns appear
+only multiplied by known numbers.
+
+\textit{Writing all $N_K$ equations as one matrix system.}
+We have one equation per point.
+Stack them all into a matrix form $X^\top p = q$:
+\[
+  \underbrace{
+  \begin{bmatrix}
+    x_{1,k} & y_{1,k} & 1 \\
+    x_{2,k} & y_{2,k} & 1 \\
+    \vdots  & \vdots  & \vdots \\
+    x_{N_K,k} & y_{N_K,k} & 1
+  \end{bmatrix}
+  }_{X^\top \;(N_K \times 3)}
+  \underbrace{
+  \begin{bmatrix} p_1 \\ p_2 \\ p_3 \end{bmatrix}
+  }_{p\;(3\times 1)}
+  =
+  \underbrace{
+  \begin{bmatrix}
+    x_{1,k}^2 + y_{1,k}^2 \\
+    x_{2,k}^2 + y_{2,k}^2 \\
+    \vdots \\
+    x_{N_K,k}^2 + y_{N_K,k}^2
+  \end{bmatrix}
+  }_{q\;(N_K \times 1)}
+\]
+
+\begin{notebox}
+  \textbf{What each matrix and vector actually contains}
+
+  \medskip
+  \textbf{$X^\top$ ($N_K \times 3$) --- one row per point:}
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item Column 1: the $x$-coordinate of each Cartesian point
+      (will be multiplied by $p_1 = 2x_c$).
+    \item Column 2: the $y$-coordinate of each Cartesian point
+      (will be multiplied by $p_2 = 2y_c$).
+    \item Column 3: all ones (will be multiplied by $p_3$, the
+      combined constant term).
+  \end{itemize}
+  Equivalently, $X$ is $3 \times N_K$ with each \emph{column} being
+  one point $[x_{i,k},\, y_{i,k},\, 1]^\top$.
+
+  \medskip
+  \textbf{$q$ ($N_K \times 1$) --- one entry per point:}
+  Each entry is $x_{i,k}^2 + y_{i,k}^2$ --- the \emph{squared distance
+  from the origin} to point $i$.
+  This is the right-hand side that came from moving the data terms
+  across in the rearrangement above.
+  It is built entirely from known measured values.
+
+  \medskip
+  \textbf{$p$ ($3 \times 1$) --- the three unknowns:}
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item $p_1 = 2x_{c,k}$ \quad$\Rightarrow$ extract centre
+      $x_{c,k} = p_1/2$
+    \item $p_2 = 2y_{c,k}$ \quad$\Rightarrow$ extract centre
+      $y_{c,k} = p_2/2$
+    \item $p_3 = \rho^2 - x_{c,k}^2 - y_{c,k}^2$
+      \quad$\Rightarrow$ extract radius
+      $\rho = \sqrt{p_3 + x_{c,k}^2 + y_{c,k}^2}$
+  \end{itemize}
+\end{notebox}
+
+\textit{Why is the system overdetermined, and what does the normal
+equation do?}
+
+We have $N_K$ equations (one per point) but only 3 unknowns.
+As long as $N_K > 3$ --- which is always true for a useful cluster ---
+there is no vector $p$ that satisfies all equations exactly, because
+the measured points are noisy.
+Instead we \textbf{minimise the total squared residual}
+$\|X^\top p - q\|^2$: find the $p$ whose predicted values
+$X^\top p$ are as close as possible to the measured right-hand side $q$.
+
+Differentiating $\|X^\top p - q\|^2$ with respect to $p$ and setting
+it to zero gives the \textbf{normal equation}:
+\[
+  XX^\top\, p = Xq
+  \quad\Longrightarrow\quad
+  p = (XX^\top)^{-1}\, Xq
+\]
+Note that $XX^\top$ is only $3\times 3$ (from a $3\times N_K$ times
+$N_K\times 3$ product), regardless of how many points there are ---
+so the matrix inversion is tiny.
+This gives the \textbf{exact global minimum in one step}: no
+iteration, no initial guess needed.
+
+\begin{keybox}
+  \textbf{What do you actually get out of this minimisation?}
+
+  You get the disc centre $(x_{c,k},\, y_{c,k})$ --- the
+  \textbf{best estimate of the robot's position} given all $N_K$ noisy
+  measurements in that cluster.
+
+  Think of it this way:
+  \begin{itemize}[leftmargin=1.2em,itemsep=3pt]
+    \item Each individual LiDAR point on the robot's surface is
+      \emph{noisy} --- it has its own uncertainty ellipsoid from
+      Section~5.3.
+      You could use one point as your position guess, but it would be
+      unreliable.
+    \item The disc fitting uses \emph{all} $N_K$ points at once.
+      The noise on different points is independent --- some measure a bit
+      too far, some a bit too close, some shifted left, some shifted right.
+      By fitting a circle through all of them together, those random
+      errors largely \emph{cancel out}, and the centre estimate becomes
+      much more reliable than any single point alone.
+    \item The more points in the cluster, the better: noise averages
+      out faster with more measurements.
+  \end{itemize}
+  So the result is not truly ``noise-free'' --- it is the
+  \textbf{maximum likelihood estimate} of the disc centre: the most
+  probable true robot position consistent with all the noisy data.
+  This estimated centre $(x_{c,k}, y_{c,k})$ is then handed to the
+  \textbf{Kalman filter} as the position measurement for that time step.
+\end{keybox}
+
+% ------------------------------------------------------------------------------
+\subsection*{5.5 \quad Simulation and Tracking Moving Targets}
+% ------------------------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.80\textwidth]{slide-30.jpg}
+  \caption{Simulation result with the LiDAR placed at the origin $(0,0)$.
+    Three robots (blue, green, red) are detected from partial arc-shaped
+    point clusters on their surfaces.  The fitted disc centres ($+$ markers)
+    closely match the true robot positions.  Note that each robot only
+    reflects a partial arc --- the LiDAR only sees the side facing the
+    sensor.}
+\end{figure}
+
+Once the disc centre $\boldsymbol{\xi}_{c,k} = (x_{c,k}, y_{c,k})$ of each
+robot is found at each time step $k$, the position estimate can be fed into
+a \textbf{Kalman filter} to track the robots as they move.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{slide-31.jpg}
+  \caption{State-space model for a moving robot.  The state vector contains
+    position and velocity; $\Phi$ propagates the state forward by one time
+    step $T_s$; $H$ extracts the position measurements from the state.}
+\end{figure}
+
+\textbf{State-space model.}
+If no information about the robots' dynamics is available, a simple
+constant-velocity model is used.
+The state vector for one robot is:
+\[
+  \chi_k = \begin{bmatrix} x_k \\ y_k \\ v_{x,k} \\ v_{y,k} \end{bmatrix}
+\]
+containing position $(x_k, y_k)$ and velocity $(v_{x,k}, v_{y,k})$.
+
+The state transition matrix (assuming constant velocity over one step $T_s$):
+\[
+  \Phi = \begin{bmatrix}
+    1 & 0 & T_s & 0  \\
+    0 & 1 & 0   & T_s \\
+    0 & 0 & 1   & 0  \\
+    0 & 0 & 0   & 1
+  \end{bmatrix}
+\]
+Each position updates by adding velocity $\times$ time step; velocity is
+assumed constant (changed only by process noise $w_k$).
+
+The measurement matrix extracts only the position from the state, since
+the LiDAR measures position (disc centre), not velocity:
+\[
+  H = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{bmatrix}
+\]
+
+The full discrete-time model is:
+\[
+  \chi_{k+1} = \Phi\,\chi_k + w_k,
+  \qquad
+  \xi_k = H\,\chi_k + \nu_k
+\]
+where $w_k$ and $\nu_k$ are Gaussian noise signals.
+A standard Kalman filter can now be applied to estimate position and
+velocity from the noisy disc-centre measurements.
+
+\begin{notebox}
+  \textbf{Why use a Kalman filter here?}
+
+  The disc-fitting step gives a noisy position estimate
+  $\boldsymbol{\xi}_{c,k}$ at each time step.
+  On its own, each estimate has uncertainty from the LiDAR noise (via the
+  uncertainty ellipsoid from Section~5.3).
+  The Kalman filter does two things:
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item \textbf{Smooths} the position estimate by combining the current
+      measurement with the prediction from the dynamic model --- a single
+      noisy measurement is less trusted than the combination of many
+      measurements over time.
+    \item \textbf{Estimates velocity} even though velocity is never directly
+      measured --- the filter infers it from how the position changes between
+      steps.
+  \end{itemize}
+  For multiple robots, independent copies of the state vector and filter
+  are run in parallel --- one per robot.
+\end{notebox}
+
+% ── Key takeaways ─────────────────────────────────────────────────────────────
+\begin{keybox}
+  \textbf{Section 5 --- Key Takeaways}
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item The LRF produces a polar point cloud
+      $S_k = \{(d_{i,k}, \alpha_{i,k})\}$ at each time step.
+      Noise is modelled as independent Gaussians on range and angle.
+    \item Polar $\to$ Cartesian uses a nonlinear transform; the
+      \textbf{Jacobian} $J$ linearises the noise propagation.
+      The result is a tilted ellipse whose tangential axis grows with
+      range: $\sigma_\text{tangential} \approx \bar{d}_i\,\sigma_{\nu_\alpha}$.
+    \item \textbf{DBSCAN} clusters the point cloud into groups, one per
+      object.  Each cluster is fitted with a \textbf{disc} (circle) model
+      via linear least-squares: $p = (XX^\top)^{-1}Xq$, giving centre
+      and radius in one matrix step.
+    \item The disc centre positions are fed into a \textbf{Kalman filter}
+      with a constant-velocity state model
+      $\chi_k = [x, y, v_x, v_y]^\top$ to track moving robots and
+      estimate velocity from position measurements alone.
+    \item For multiple robots, independent Kalman filter instances run
+      in parallel --- one state vector per robot.
+  \end{itemize}
+\end{keybox}
+
+\end{document}

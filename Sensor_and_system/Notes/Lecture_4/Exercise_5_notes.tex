@@ -1,0 +1,95 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage[T1]{fontenc}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+
+% ── Graphics path ─────────────────────────────────────────────────────────────
+\graphicspath{{../../Images_for_latex/Lecture_4/}}
+
+% ── Colours ───────────────────────────────────────────────────────────────────
+\definecolor{keyblue}{RGB}{30, 80, 160}
+\definecolor{keybluebg}{RGB}{220, 235, 255}
+\definecolor{noteorange}{RGB}{200, 100, 0}
+\definecolor{noteorangebg}{RGB}{255, 240, 215}
+\definecolor{warnred}{RGB}{180, 30, 30}
+\definecolor{warnredbg}{RGB}{255, 220, 220}
+\definecolor{defgreen}{RGB}{20, 110, 50}
+\definecolor{defgreenbg}{RGB}{215, 245, 225}
+\definecolor{headernavy}{RGB}{25, 35, 90}
+
+% ── Box environments ──────────────────────────────────────────────────────────
+\newmdenv[linecolor=keyblue,backgroundcolor=keybluebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{keybox}
+
+\newmdenv[linecolor=noteorange,backgroundcolor=noteorangebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{notebox}
+
+\newmdenv[linecolor=warnred,backgroundcolor=warnredbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{warnbox}
+
+\newmdenv[linecolor=defgreen,backgroundcolor=defgreenbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{defbox}
+
+% ── Section formatting ────────────────────────────────────────────────────────
+\titleformat{\section}[block]{\large\bfseries\color{headernavy}}{}{0pt}{}
+  [\vspace{2pt}\rule{\linewidth}{0.8pt}\vspace{4pt}]
+\titleformat{\subsection}[block]{\normalsize\bfseries\color{keyblue}}{}{0pt}{}
+
+% ── Document ──────────────────────────────────────────────────────────────────
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries\color{headernavy} Sensors \& Systems}\\[4pt]
+  {\large Kalman Filter for Nonlinear Systems --- EKF \& UKF}\\[2pt]
+  {\normalsize Torben Knudsen \quad|\quad Electronic Systems, 8th Semester}
+\end{center}
+
+\texttt{np.linalg.eigh($(n+\lambda)P$)} decomposes the scaled covariance matrix into:
+\begin{itemize}[leftmargin=1.4em]
+    \item \texttt{eigvals} $= \Lambda$ --- how much variance exists in each direction
+    \item \texttt{eigvecs} $= V$ --- which directions the variance points in
+\end{itemize}
+Think of it as finding the natural axes of the uncertainty ellipse and how stretched it is along each axis.
+
+\texttt{S = eigvecs @ np.diag(np.sqrt(eigvals))} builds the matrix square root
+\[
+  S = V\sqrt{\Lambda}
+\]
+so each column of $S$ points in an eigenvector direction (shape of uncertainty)
+scaled by $\sqrt{\lambda_i}$ (how far to push in that direction).
+Together $S \approx \sqrt{(n+\lambda)P}$, giving the sigma point offsets from the mean.
+
+\begin{notebox}
+  \texttt{np.maximum(eigvals, 0)} clips any negative eigenvalues to zero before
+  taking the square root. $P$ should be positive definite by construction, so all
+  eigenvalues should be $> 0$, but floating-point accumulation over many steps can
+  produce tiny negative values. Taking $\sqrt{\text{negative}}$ would give \texttt{NaN}
+  and silently break the filter --- the clip prevents this.
+\end{notebox}
+\end{document}

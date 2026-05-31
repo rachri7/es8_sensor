@@ -1,0 +1,433 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[colorlinks=true, urlcolor=keyblue]{hyperref}
+\usepackage[T1]{fontenc}
+
+% ── Colours ───────────────────────────────────────────────────────────────────
+\definecolor{keyblue}{RGB}{30, 80, 160}
+\definecolor{keybluebg}{RGB}{220, 235, 255}
+\definecolor{noteorange}{RGB}{200, 100, 0}
+\definecolor{noteorangebg}{RGB}{255, 240, 215}
+\definecolor{warnred}{RGB}{180, 30, 30}
+\definecolor{warnredbg}{RGB}{255, 220, 220}
+\definecolor{defgreen}{RGB}{20, 110, 50}
+\definecolor{defgreenbg}{RGB}{215, 245, 225}
+\definecolor{headernavy}{RGB}{25, 35, 90}
+
+% ── Box environments ──────────────────────────────────────────────────────────
+\newmdenv[
+  linecolor=keyblue, backgroundcolor=keybluebg, linewidth=1.5pt,
+  leftline=true, rightline=false, topline=false, bottomline=false,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  skipabove=8pt, skipbelow=8pt,
+]{keybox}
+
+\newmdenv[
+  linecolor=noteorange, backgroundcolor=noteorangebg, linewidth=1.5pt,
+  leftline=true, rightline=false, topline=false, bottomline=false,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  skipabove=8pt, skipbelow=8pt,
+]{notebox}
+
+\newmdenv[
+  linecolor=defgreen, backgroundcolor=defgreenbg, linewidth=1.5pt,
+  leftline=true, rightline=false, topline=false, bottomline=false,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  skipabove=8pt, skipbelow=8pt,
+]{defbox}
+
+% ── Section formatting ────────────────────────────────────────────────────────
+\titleformat{\section}[block]
+  {\large\bfseries\color{headernavy}}{}{0pt}{}
+  [\vspace{2pt}\rule{\linewidth}{0.8pt}\vspace{4pt}]
+
+\titleformat{\subsection}[block]
+  {\normalsize\bfseries\color{keyblue}}{}{0pt}{}
+
+% ── Document ──────────────────────────────────────────────────────────────────
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries\color{headernavy} Sensors \& Systems}\\[4pt]
+  {\large Exercises --- Lecture 2}\\[2pt]
+  {\normalsize Jan Bendtsen, Torben Knudsen \quad|\quad Electronic Systems, 8th Semester}
+\end{center}
+
+\vspace{4pt}
+\hrule height 1.2pt
+\vspace{12pt}
+
+% ==============================================================================
+\section*{Exercise 1 \quad Valid PDF, Expectation and Variance}
+
+\subsection*{Problem statement}
+
+Is the function
+\[
+  f(x) =
+  \begin{cases}
+    \dfrac{3}{5}\,x & \text{if } 0 < x \leq 1,\\[8pt]
+    \dfrac{\bigl(\sqrt{3}\,x - \sqrt{12}\bigr)^2}{5} & \text{if } 1 < x \leq 3,\\[8pt]
+    \dfrac{12}{5} - \dfrac{3}{5}\,x & \text{if } 3 < x \leq 4,\\[6pt]
+    0 & \text{otherwise,}
+  \end{cases}
+\]
+a valid probability density function?  If yes, find the expectation $\mu_X$
+and variance $\sigma_X^2$ of the associated random variable.
+
+\medskip
+\textbf{Simulation:} \href{run:exercise_1.py}{\texttt{exercise\_1.py}} ---
+click to open the live-sampling script (works in most PDF viewers).
+
+% ==============================================================================
+\section*{Solution}
+
+\begin{notebox}
+\textbf{What does $f(x)$ actually tell us?}
+
+$f(x)$ is a \emph{density} — it does not give the probability at a single point.
+Probability only comes from integrating over an interval:
+\[
+  P(a \leq X \leq b) = \int_a^b f(x)\,dx \quad \text{(area under the curve)}
+\]
+The three pieces simply describe the \emph{shape} of the density over different regions of $x$:
+
+\medskip
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{clll}
+  \hline
+  \textbf{Piece} & \textbf{Range} & \textbf{Formula} & \textbf{Shape / meaning} \\
+  \hline
+  1 & $0 < x \leq 1$ & $\tfrac{3}{5}x$ & Ramp \textbf{up} — values near $x=1$ more likely than near $x=0$ \\
+  2 & $1 < x \leq 3$ & $\tfrac{3}{5}(x-2)^2$ & Parabola — $x=2$ is the \textbf{least} likely point in this piece \\
+  3 & $3 < x \leq 4$ & $\tfrac{12}{5}-\tfrac{3}{5}x$ & Ramp \textbf{down} — values near $x=3$ more likely than near $x=4$ \\
+  — & otherwise & $0$ & Impossible — $X$ cannot take values outside $[0,4]$ \\
+  \hline
+\end{tabular}
+
+\medskip
+For example, $P(0 \leq X \leq 1) = I_1 = \tfrac{3}{10} = 30\%$.
+\end{notebox}
+
+\subsection*{Part 0 --- Simplify the middle piece}
+
+First note that the middle piece simplifies:
+\[
+  \frac{(\sqrt{3}\,x - \sqrt{12})^2}{5}
+  = \frac{3x^2 - 2\sqrt{36}\,x + 12}{5}
+  = \frac{3x^2 - 12x + 12}{5}
+  = \frac{3(x-2)^2}{5}
+\]
+So we work with:
+\[
+  f(x) =
+  \begin{cases}
+    \tfrac{3}{5}x           & 0 < x \leq 1 \\
+    \tfrac{3}{5}(x-2)^2     & 1 < x \leq 3 \\
+    \tfrac{12}{5}-\tfrac{3}{5}x & 3 < x \leq 4 \\
+    0 & \text{otherwise}
+  \end{cases}
+\]
+
+\subsection*{Part 1 --- Is $f(x)$ a valid PDF?}
+
+A function is a valid PDF if (1) $f(x) \geq 0$ for all $x$, and
+(2) $\int_{-\infty}^{\infty} f(x)\,dx = 1$.
+
+\textbf{Non-negativity:} each piece is non-negative on its domain
+(a linear ramp, a squared term, and a falling ramp respectively). \checkmark
+
+\textbf{Integrates to 1:}
+
+The following integration rules are used throughout:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{cll}
+  \hline
+  \textbf{Rule} & \textbf{Form} & \textbf{Result} \\
+  \hline
+  R1 & $\displaystyle\int x^n\,dx$ & $\displaystyle\frac{x^{n+1}}{n+1} + C$ \quad (power rule) \\
+  R2 & $\displaystyle\int (x-a)^n\,dx$ & $\displaystyle\frac{(x-a)^{n+1}}{n+1} + C$ \quad (shifted power rule) \\
+  R3 & $\displaystyle\int c\,dx$ & $cx + C$ \quad (constant rule) \\
+  \hline
+\end{tabular}
+\end{center}
+
+\medskip
+\textbf{Piece 1} \quad $I_1 = \displaystyle\int_0^1 \frac{3}{5}x\,dx$
+
+Using \textbf{R1} with $n=1$: $\displaystyle\int x\,dx = \frac{x^2}{2}$, so
+\[
+  I_1 = \frac{3}{5}\cdot\frac{x^2}{2}\Bigg|_0^1
+      = \frac{3}{10}\Bigl[x^2\Bigr]_0^1
+      = \frac{3}{10}\bigl[(1)^2 - (0)^2\bigr]
+      = \frac{3}{10}\cdot 1
+      = \frac{3}{10}
+\]
+
+\medskip
+\textbf{Piece 2} \quad $I_2 = \displaystyle\int_1^3 \frac{3}{5}(x-2)^2\,dx$
+
+Using \textbf{R2} with $a=2$, $n=2$: $\displaystyle\int(x-2)^2\,dx = \frac{(x-2)^3}{3}$, so
+\[
+  I_2 = \frac{3}{5}\cdot\frac{(x-2)^3}{3}\Bigg|_1^3
+      = \frac{1}{5}\Bigl[(x-2)^3\Bigr]_1^3
+      = \frac{1}{5}\bigl[(3-2)^3 - (1-2)^3\bigr]
+      = \frac{1}{5}\bigl[(1)^3 - (-1)^3\bigr]
+      = \frac{1}{5}(1+1)
+      = \frac{2}{5}
+\]
+
+\medskip
+\textbf{Piece 3} \quad $I_3 = \displaystyle\int_3^4 \left(\frac{12}{5} - \frac{3}{5}x\right)dx$
+
+Split into two terms. Using \textbf{R3} on the constant and \textbf{R1} ($n=1$) on $x$:
+\[
+  \int\left(\frac{12}{5} - \frac{3}{5}x\right)dx
+  = \frac{12}{5}x - \frac{3}{5}\cdot\frac{x^2}{2}
+  = \frac{12x}{5} - \frac{3x^2}{10}
+\]
+Inserting the limits:
+\[
+  I_3 = \left[\frac{12x}{5} - \frac{3x^2}{10}\right]_3^4
+      = \left(\frac{12\cdot 4}{5} - \frac{3\cdot 16}{10}\right)
+        - \left(\frac{12\cdot 3}{5} - \frac{3\cdot 9}{10}\right)
+\]
+\[
+      = \left(\frac{48}{5} - \frac{48}{10}\right)
+        - \left(\frac{36}{5} - \frac{27}{10}\right)
+      = \left(\frac{96}{10} - \frac{48}{10}\right)
+        - \left(\frac{72}{10} - \frac{27}{10}\right)
+      = \frac{48}{10} - \frac{45}{10}
+      = \frac{3}{10}
+\]
+
+\medskip
+\textbf{Total:}
+\[
+  I_1 + I_2 + I_3 = \frac{3}{10} + \frac{4}{10} + \frac{3}{10} = \frac{10}{10} = 1 \quad \checkmark
+\]
+
+\begin{defbox}
+  \textbf{Yes}, $f(x)$ is a valid PDF.
+\end{defbox}
+
+\subsection*{Part 2 --- Expectation $\mu_X = E[X]$}
+
+\begin{notebox}
+The \textbf{expectation} is the probability-weighted average of $x$:
+\[
+  E[X] = \int_{-\infty}^{\infty} x\,f(x)\,dx
+\]
+Each piece contributes $\int x \cdot f(x)\,dx$ over its own interval.
+The same rules R1--R3 from Part 1 apply; for Pieces 2 and 3 the product $x\cdot f(x)$ is
+expanded into a polynomial first, then each term is integrated with R1.
+\end{notebox}
+
+\[
+  E[X] = \underbrace{\int_0^1 x\cdot\frac{3x}{5}\,dx}_{J_1}
+       + \underbrace{\int_1^3 x\cdot\frac{3(x-2)^2}{5}\,dx}_{J_2}
+       + \underbrace{\int_3^4 x\!\left(\frac{12}{5}-\frac{3x}{5}\right)dx}_{J_3}
+\]
+
+\medskip
+\textbf{Piece 1} \quad $J_1 = \displaystyle\int_0^1 \frac{3x^2}{5}\,dx$
+
+Multiply: $x\cdot\tfrac{3x}{5} = \tfrac{3x^2}{5}$.
+Using \textbf{R1} with $n=2$: $\displaystyle\int x^2\,dx = \frac{x^3}{3}$, so
+\[
+  J_1 = \frac{3}{5}\cdot\frac{x^3}{3}\Bigg|_0^1
+      = \frac{1}{5}\Bigl[x^3\Bigr]_0^1
+      = \frac{1}{5}\bigl[(1)^3 - (0)^3\bigr]
+      = \frac{1}{5}
+\]
+
+\medskip
+\textbf{Piece 2} \quad $J_2 = \displaystyle\int_1^3 \frac{3}{5}\,x(x-2)^2\,dx$
+
+Expand $x(x-2)^2 = x(x^2-4x+4) = x^3-4x^2+4x$, then apply \textbf{R1} to each term:
+\[
+  \int(x^3-4x^2+4x)\,dx = \frac{x^4}{4} - \frac{4x^3}{3} + 2x^2
+\]
+Inserting the limits:
+\[
+  J_2 = \frac{3}{5}\left[\frac{x^4}{4}-\frac{4x^3}{3}+2x^2\right]_1^3
+      = \frac{3}{5}\left[
+          \left(\frac{81}{4}-\frac{108}{3}+18\right)
+        - \left(\frac{1}{4}-\frac{4}{3}+2\right)
+        \right]
+\]
+\[
+      = \frac{3}{5}\left[
+          \left(\frac{81}{4}-36+18\right)
+        - \left(\frac{3}{12}-\frac{16}{12}+\frac{24}{12}\right)
+        \right]
+      = \frac{3}{5}\left[\frac{9}{4} - \frac{11}{12}\right]
+      = \frac{3}{5}\cdot\frac{27-11}{12}
+      = \frac{3}{5}\cdot\frac{4}{3}
+      = \frac{4}{5}
+\]
+
+\medskip
+\textbf{Piece 3} \quad $J_3 = \displaystyle\int_3^4 x\!\left(\frac{12}{5}-\frac{3x}{5}\right)dx$
+
+Multiply out: $x\!\left(\tfrac{12}{5}-\tfrac{3x}{5}\right) = \tfrac{1}{5}(12x-3x^2)$.
+Apply \textbf{R1} to each term:
+\[
+  \int(12x-3x^2)\,dx = 6x^2-x^3
+\]
+Inserting the limits:
+\[
+  J_3 = \frac{1}{5}\Bigl[6x^2-x^3\Bigr]_3^4
+      = \frac{1}{5}\Bigl[(6\cdot16-64)-(6\cdot9-27)\Bigr]
+      = \frac{1}{5}\bigl[(96-64)-(54-27)\bigr]
+      = \frac{1}{5}\bigl[32-27\bigr]
+      = 1
+\]
+
+\[
+  \boxed{\mu_X = J_1+J_2+J_3 = \frac{1}{5}+\frac{4}{5}+1 = 2}
+\]
+
+% ==============================================================================
+\subsection*{Part 3 --- Variance $\sigma_X^2 = E[X^2] - \mu_X^2$}
+
+\begin{notebox}
+The \textbf{variance} measures how spread out $X$ is around its mean.
+The shortcut formula avoids computing $E[(X-\mu)^2]$ directly:
+\[
+  \sigma_X^2 = E[X^2] - \bigl(E[X]\bigr)^2
+\]
+We compute $E[X^2] = \int x^2\,f(x)\,dx$ (same structure as before, multiply $x^2$ into each piece),
+then subtract $\mu_X^2 = 2^2 = 4$.
+\end{notebox}
+
+\[
+  E[X^2] = \underbrace{\int_0^1 x^2\cdot\frac{3x}{5}\,dx}_{K_1}
+          + \underbrace{\int_1^3 x^2\cdot\frac{3(x-2)^2}{5}\,dx}_{K_2}
+          + \underbrace{\int_3^4 x^2\!\left(\frac{12}{5}-\frac{3x}{5}\right)dx}_{K_3}
+\]
+
+\medskip
+\textbf{Piece 1} \quad $K_1 = \displaystyle\int_0^1 \frac{3x^3}{5}\,dx$
+
+Multiply: $x^2\cdot\tfrac{3x}{5} = \tfrac{3x^3}{5}$.
+Using \textbf{R1} with $n=3$: $\displaystyle\int x^3\,dx = \frac{x^4}{4}$, so
+\[
+  K_1 = \frac{3}{5}\cdot\frac{x^4}{4}\Bigg|_0^1
+      = \frac{3}{20}\Bigl[x^4\Bigr]_0^1
+      = \frac{3}{20}\bigl[(1)^4-(0)^4\bigr]
+      = \frac{3}{20}
+\]
+
+\medskip
+\textbf{Piece 2} \quad $K_2 = \displaystyle\int_1^3 \frac{3}{5}\,x^2(x-2)^2\,dx$
+
+Expand $x^2(x-2)^2 = x^2(x^2-4x+4) = x^4-4x^3+4x^2$, then apply \textbf{R1} to each term:
+\[
+  \int(x^4-4x^3+4x^2)\,dx = \frac{x^5}{5} - x^4 + \frac{4x^3}{3}
+\]
+Inserting the limits:
+\[
+  K_2 = \frac{3}{5}\left[\frac{x^5}{5}-x^4+\frac{4x^3}{3}\right]_1^3
+      = \frac{3}{5}\left[
+          \left(\frac{243}{5}-81+\frac{108}{3}\right)
+        - \left(\frac{1}{5}-1+\frac{4}{3}\right)
+        \right]
+\]
+\[
+      = \frac{3}{5}\left[
+          \left(\frac{243}{5}-81+36\right)
+        - \left(\frac{3}{15}-\frac{15}{15}+\frac{20}{15}\right)
+        \right]
+      = \frac{3}{5}\left[\frac{18}{5}-\frac{8}{15}\right]
+      = \frac{3}{5}\cdot\frac{54-8}{15}
+      = \frac{3}{5}\cdot\frac{46}{15}
+      = \frac{46}{25}
+\]
+
+\medskip
+\textbf{Piece 3} \quad $K_3 = \displaystyle\int_3^4 x^2\!\left(\frac{12}{5}-\frac{3x}{5}\right)dx$
+
+Multiply out: $x^2\!\left(\tfrac{12}{5}-\tfrac{3x}{5}\right) = \tfrac{1}{5}(12x^2-3x^3)$.
+Apply \textbf{R1} to each term:
+\[
+  \int(12x^2-3x^3)\,dx = 4x^3-\frac{3x^4}{4}
+\]
+Inserting the limits:
+\[
+  K_3 = \frac{1}{5}\left[4x^3-\frac{3x^4}{4}\right]_3^4
+      = \frac{1}{5}\left[
+          \left(4\cdot64-\frac{3\cdot256}{4}\right)
+        - \left(4\cdot27-\frac{3\cdot81}{4}\right)
+        \right]
+\]
+\[
+      = \frac{1}{5}\left[(256-192)-\left(108-\frac{243}{4}\right)\right]
+      = \frac{1}{5}\left[64-\frac{189}{4}\right]
+      = \frac{1}{5}\cdot\frac{256-189}{4}
+      = \frac{1}{5}\cdot\frac{67}{4}
+      = \frac{67}{20}
+\]
+
+\medskip
+\textbf{Total $E[X^2]$:} convert to a common denominator of 100:
+\[
+  E[X^2] = \frac{3}{20}+\frac{46}{25}+\frac{67}{20}
+         = \frac{15}{100}+\frac{184}{100}+\frac{335}{100}
+         = \frac{534}{100}
+         = \frac{267}{50}
+\]
+
+\[
+  \boxed{\sigma_X^2 = E[X^2]-\mu_X^2 = \frac{267}{50}-4 = \frac{267-200}{50} = \frac{67}{50}}
+\]
+
+\begin{keybox}
+  \textbf{Answers:} $\mu_X = 2$, \quad $\sigma_X^2 = \dfrac{67}{50} = 1.34$
+\end{keybox}
+
+\subsection*{Part 4 --- Python Simulation}
+
+\begin{notebox}
+  \textbf{Script:} \href{run:exercise_1.py}{\texttt{exercise\_1.py}}
+
+  Samples the random variable using \textbf{inverse-CDF (inverse transform)
+  sampling}: draw $u \sim \mathcal{U}(0,1)$ and apply $F^{-1}(u)$, where
+  the CDF pieces are:
+  \[
+    F(x) =
+    \begin{cases}
+      \dfrac{3x^2}{10}                          & 0 < x \leq 1 \\[6pt]
+      \dfrac{3}{10} + \dfrac{(x-2)^3+1}{5}      & 1 < x \leq 3 \\[6pt]
+      \dfrac{24x - 3x^2 - 38}{10}               & 3 < x \leq 4
+    \end{cases}
+  \]
+  Inverting each piece gives:
+  \[
+    F^{-1}(u) =
+    \begin{cases}
+      \sqrt{10u/3}                               & u \leq 3/10 \\[4pt]
+      2 + \sqrt[3]{5u - 5/2}                     & 3/10 < u \leq 7/10 \\[4pt]
+      4 - \sqrt{120(1-u)}\,/\,6                  & u > 7/10
+    \end{cases}
+  \]
+  The live plot shows the histogram converging to $f(x)$, the true
+  expectation $\mu=2$ as a dashed line, and running sample mean and
+  variance converging to their true values.
+\end{notebox}
+
+\end{document}

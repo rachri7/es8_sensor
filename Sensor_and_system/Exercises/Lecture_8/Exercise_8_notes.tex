@@ -1,0 +1,282 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage[T1]{fontenc}
+\usepackage{tikz}
+\usepackage{listings}
+\usetikzlibrary{arrows.meta}
+
+% ── Graphics path ─────────────────────────────────────────────────────────────
+\graphicspath{{../../Images_for_latex/Lecture_8/}}
+
+% ── Colours ───────────────────────────────────────────────────────────────────
+\definecolor{keyblue}{RGB}{30, 80, 160}
+\definecolor{keybluebg}{RGB}{220, 235, 255}
+\definecolor{noteorange}{RGB}{200, 100, 0}
+\definecolor{noteorangebg}{RGB}{255, 240, 215}
+\definecolor{warnred}{RGB}{180, 30, 30}
+\definecolor{warnredbg}{RGB}{255, 220, 220}
+\definecolor{defgreen}{RGB}{20, 110, 50}
+\definecolor{defgreenbg}{RGB}{215, 245, 225}
+\definecolor{headernavy}{RGB}{25, 35, 90}
+
+% ── Box environments ──────────────────────────────────────────────────────────
+\newmdenv[linecolor=keyblue,backgroundcolor=keybluebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{keybox}
+
+\newmdenv[linecolor=noteorange,backgroundcolor=noteorangebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{notebox}
+
+\newmdenv[linecolor=warnred,backgroundcolor=warnredbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{warnbox}
+
+\newmdenv[linecolor=defgreen,backgroundcolor=defgreenbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{defbox}
+
+% ── Section formatting ────────────────────────────────────────────────────────
+\titleformat{\section}[block]{\large\bfseries\color{headernavy}}{}{0pt}{}
+  [\vspace{2pt}\rule{\linewidth}{0.8pt}\vspace{4pt}]
+\titleformat{\subsection}[block]{\normalsize\bfseries\color{keyblue}}{}{0pt}{}
+
+% ── Document ──────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\clearpage
+\section*{Exercise: BLE RSSI Trilateration in Python}
+% ══════════════════════════════════════════════════════════════════════════════
+\vspace{-0.3cm}
+\subsection*{BLE RSSI}
+\begin{warnbox}
+We specfically want to simulate noisy RSSI measurements in a 5\,$\times$\,10\,m room,
+invert them to distances, and find the position by optimisation.
+
+Parameters follow Bembenik \& Falcman (2020): $\gamma = 1.74$,
+$f = 2.45$\,GHz, TxPower $A = -10\gamma\log_{10}(4\pi f/c)
+\approx -35$\,dBm, $\sigma_S = 3$\,dBm RSSI noise.
+\end{warnbox}
+
+The idea behind BLE positioning is straightforward. Small BLE beacons are fixed around the room at positions that are known in advance — measured once at setup and stored.
+
+They just continuously broadcast a radio signal; they do not know where the receiver is.
+The receiver (e.g. a smartphone) listens to all beacons it can hear. 
+Because radio signals weaken with distance — the further the beacon, the weaker the signal that arrives — 
+the receiver uses the measured signal strength from each beacon as a proxy for distance
+
+\subsection*{BLE RSSI Distance Model}
+When a radio signal travels distance $\rho$ through space it loses power
+according to the \textbf{free-space path loss} model. In free space the
+signal spreads out in all directions ---  the further
+it travels, the more the received
+power drops. This is captured by:
+\[
+  \ell = \left(\frac{4\pi\rho}{\lambda}\right)^{\!\gamma}
+       = \left(\frac{4\pi\rho f}{c}\right)^{\!\gamma}
+\]
+The exponent $\gamma$ controls how fast the signal decays with distance.
+\begin{itemize}
+  \item In free space $\gamma = 2$, meaning power falls as $1/\rho^2$.
+  \item In practice $\gamma$ must be calibrated for the environment;
+we use $\gamma = 1.74$ taken from Bembenik \& Falcman (2020), who
+measured it experimentally in an office room.
+\end{itemize}
+\begin{warnbox}
+Interestingly this is below the free-space value of 2 --- one might
+expect walls to absorb signal and cause faster decay, but reflections
+can constructively add energy toward the receiver, slowing it instead.
+\end{warnbox}
+Taking the path loss into the log domain (converting to dBm) gives the
+RSSI formula, here added with noise:
+\[
+  \boxed{S = \underbrace{-10\gamma\log_{10}\rho}_{\text{decreases as }\rho\text{ grows}}
+           + \underbrace{10\gamma\log_{10}\!\left(\frac{4\pi f}{c}\right)}_{A\;=\;\text{constant at 1\,m}} + \nu_i} \quad \text{Where} \quad
+  \nu_i \sim \mathcal{N}(0,\sigma_S^2)
+\]
+The first term is what carries the distance information --- as $\rho$
+increases, $S$ becomes more negative (weaker signal).
+
+$A$ is a constant that depends only on frequency and $\gamma$; it is
+calibrated at 1\,m by the manufacturer and stored in the beacon.
+
+The noise $\nu_i \sim \mathcal{N}(0, \sigma_S^2)$ lumps together
+two sources of error.
+First, small electronic and quantisation noise from the \textbf{sensor}
+itself.
+More significantly, \textbf{multipath}: the signal bounces off walls
+and furniture so multiple copies arrive simultaneously; depending on
+their phase they add to or subtract from the direct signal, shifting
+the RSSI reading even when the receiver is perfectly stationary.
+
+
+\subsection*{Signal inversion}
+Rearranging this, result in us being able to get distance from a measured RSSI reading:
+\[
+  \hat{\rho}_i = 10^{\,\frac{A - S_i}{10\gamma}}
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{p{1.3cm} p{3.2cm} p{7.5cm}}
+  \toprule
+  \textbf{Symbol} & \textbf{Name} & \textbf{Meaning} \\
+  \midrule
+  $\ell$ & Path loss & Ratio of transmitted power to received power
+    (dimensionless, $> 1$).  Larger $\ell$ means more signal lost. \\
+  $S$       & RSSI [dBm]         & Received signal strength; more negative = weaker = further away \\
+  $\rho$    & Range [m]          & Distance from beacon to receiver \\
+  $\gamma$  & Path-loss exponent & $\approx 2$ free space; 1.6--1.8 indoors (paper measured 1.736) \\
+  $f$       & Frequency [Hz]     & BLE: $\approx 2.4$\,GHz \\
+  $\lambda$ & Wavelength & $\lambda = c/f$; for BLE at 2.4\,GHz,
+    $\lambda \approx 12.5$\,cm. \\
+  $A$       & TxPower [dBm]      & RSSI at 1\,m; calibrated by manufacturer and stored in beacon \\
+  $c$       & $3\times10^8$\,m/s. & Speed of light, electromagnetic waves travel at this speed \\
+  \bottomrule
+\end{tabular}
+\end{center}
+\subsection*{Why not just time-of-flight?}
+
+\begin{notebox}
+  \textbf{Bluetooth --- TOF impossible on standard hardware.}
+  Radio travels at $c = 3\times10^8$\,m/s, so a 10\,m gap takes only
+  33\,ns to cross. Standard BLE chips have processing delays of
+  $\sim$150\,\textmu s before software even registers a packet arrived
+  --- that delay alone gives a fictitious range of:
+  \[
+    \frac{150\times10^{-6}\,\text{s} \times 3\times10^8\,\text{m/s}}{2}
+    = 22{,}500\,\text{m}
+  \]
+  The travel time is completely buried in the processing overhead, so
+  RSSI is used instead --- it costs nothing extra since every BLE chip
+  measures received power as part of normal operation.
+\end{notebox}
+
+\begin{notebox}
+  \textbf{Games-on-Track and GPS --- TOF works because of dedicated hardware
+  and is more accurate.}
+  Systems like Games-on-Track and GPS use chips built specifically with
+  nanosecond-precision timestamping circuits, making TOF both possible
+  and far more accurate than RSSI.
+
+  Rather than measuring signal strength, both the transmitter and receiver
+  generate the \textbf{same known pattern} --- a chirp (Games-on-Track)
+  or a pseudo-random code (GPS).
+
+  The receiver then computes the \textbf{cross-correlation} between its
+  local copy and the incoming signal; the correlation peaks sharply at
+  exactly the time shift where the two align, giving the travel time
+  $\Delta t$ and thus the range $r = c\,\Delta t$.
+
+  This is far more robust indoors than RSSI because it locks onto the
+  \textbf{first-arriving} copy of the signal --- the direct path ---
+  and ignores later reflections off walls entirely.
+\end{notebox}
+
+\subsection*{Optimisation-based trilateration}
+Because RSSI noise means the four estimated distances rarely place
+the receiver at exactly one consistent point, we instead find the
+position $(x, y)$ that is most consistent with all four measurements
+simultaneously by minimising the sum of squared residuals:
+\[
+  \min_{x,y}\;\sum_{i=1}^{4}
+  \Bigl[\underbrace{\sqrt{(x-b_{x,i})^2+(y-b_{y,i})^2}}_{\text{geometric dist to beacon }i}
+  \;-\;\underbrace{\hat{\rho}_i}_{\text{estimated dist}}\Bigr]^2
+\]
+For each beacon $i$ the bracket computes the geometric distance from
+the candidate position $(x,y)$ to the known beacon location
+$(b_{x,i}, b_{y,i})$, minus the distance estimated from the RSSI
+reading $\hat{\rho}_i$.
+
+If $(x,y)$ were placed exactly on beacon $i$'s circle the residual
+for that beacon would be zero --- but that point very likely lie far from
+the other three circles, making their residuals large.
+
+Summing over all four beacons prevents this: the solver is forced to
+find the position that is simultaneously close to all circles at once,
+which corresponds to the true receiver location.
+This is solved numerically with \texttt{scipy.optimize.minimize}
+(Nelder-Mead).
+
+\subsection*{Results}
+
+With $\sigma_S = 3$\,dBm and 40 trials per location the simulation gives:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lcc}
+  \toprule
+  \textbf{True position} & \textbf{Mean error} & \textbf{90th pct} \\
+  \midrule
+  (1.25, 2.50)\,m & 2.95\,m & 5.07\,m \\
+  (2.50, 5.00)\,m & 2.27\,m & 4.46\,m \\
+  (3.75, 7.50)\,m & 2.46\,m & 4.39\,m \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Bembenik \& Falcman report a raw baseline (no filtering) of 4.62\,m
+mean and 6.64\,m at the 90th percentile across two large irregular
+office rooms spanning roughly 20--30\,m with walls between them.
+Our errors are lower since the 5$\times$10\,m room with four ideal
+corner beacons is a considerably simpler geometry --- no irregular
+walls, no signal bleed from adjacent rooms, and beacons optimally
+placed at corners.
+\clearpage
+\begin{notebox}
+  \textbf{What the red dot clouds tell us.}
+  Each red dot is one complete trilateration result --- the same
+  position estimated from one noisy set of four RSSI readings.
+  The spread of the cloud is the \emph{positioning noise floor}: even
+  standing perfectly still, each trial lands somewhere different because
+  RSSI fluctuates due to multipath and sensor noise.
+
+  Unlike LiDAR where noise enters directly as small errors in range
+  ($\sim$5\,cm) and angle ($\sim$1$^\circ$), here the noise is on the
+  signal strength itself.
+  As the beacon gets further away the signal weakens, so the same
+  3\,dBm noise represents an increasingly large fraction of the total
+  reading --- the signal-to-noise ratio degrades with distance.
+  The log scale makes this worse: the RSSI curve flattens at large
+  distances, meaning a small change in $S$ maps to a large jump in
+  the estimated $\rho = 10^{(A-S)/(10\gamma)}$, translating 3\,dBm
+  of noise into \textbf{metres} of range uncertainty.
+\end{notebox}
+
+\begin{warnbox}
+  \textbf{Why the estimates scatter so much.}
+  The signal from each beacon does not arrive via just one path.
+  It bounces off walls, floor, and furniture, so \textbf{multiple
+  copies} arrive simultaneously.
+  RSSI measures the \emph{total} received power --- the direct copy
+  plus all reflections combined.
+  This blended power fluctuates moment to moment (a door opens,
+  someone walks past) as reflections shift in and out of phase.
+  Fluctuating RSSI gives a fluctuating range estimate, hence a
+  different trilateration result each time.
+  Typical indoor accuracy: \textbf{1--5\,m}.
+\end{warnbox}
+
+\end{document}

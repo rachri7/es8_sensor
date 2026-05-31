@@ -1,0 +1,490 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage[T1]{fontenc}
+\usepackage{tikz}
+\usepackage{listings}
+\usetikzlibrary{arrows.meta}
+
+% ── Graphics path ─────────────────────────────────────────────────────────────
+\graphicspath{{../../Images_for_latex/Lecture_8/}}
+
+% ── Colours ───────────────────────────────────────────────────────────────────
+\definecolor{keyblue}{RGB}{30, 80, 160}
+\definecolor{keybluebg}{RGB}{220, 235, 255}
+\definecolor{noteorange}{RGB}{200, 100, 0}
+\definecolor{noteorangebg}{RGB}{255, 240, 215}
+\definecolor{warnred}{RGB}{180, 30, 30}
+\definecolor{warnredbg}{RGB}{255, 220, 220}
+\definecolor{defgreen}{RGB}{20, 110, 50}
+\definecolor{defgreenbg}{RGB}{215, 245, 225}
+\definecolor{headernavy}{RGB}{25, 35, 90}
+
+% ── Box environments ──────────────────────────────────────────────────────────
+\newmdenv[linecolor=keyblue,backgroundcolor=keybluebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{keybox}
+
+\newmdenv[linecolor=noteorange,backgroundcolor=noteorangebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{notebox}
+
+\newmdenv[linecolor=warnred,backgroundcolor=warnredbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{warnbox}
+
+\newmdenv[linecolor=defgreen,backgroundcolor=defgreenbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=10pt,innerrightmargin=8pt,
+  innertopmargin=6pt,innerbottommargin=6pt,
+  skipabove=8pt,skipbelow=8pt]{defbox}
+
+% ── Section formatting ────────────────────────────────────────────────────────
+\titleformat{\section}[block]{\large\bfseries\color{headernavy}}{}{0pt}{}
+  [\vspace{2pt}\rule{\linewidth}{0.8pt}\vspace{4pt}]
+\titleformat{\subsection}[block]{\normalsize\bfseries\color{keyblue}}{}{0pt}{}
+
+% ── Document ──────────────────────────────────────────────────────────────────
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries\color{headernavy} Sensors \& Systems --- Lecture 8 Notes}\\[4pt]
+  {\large Trilateration-based Sensors: BLE, Games-on-Track, GPS}\\[2pt]
+  {\normalsize Jan Bendtsen, Torben Knudsen \quad|\quad Electronic Systems, 8th Semester}
+\end{center}
+
+\vspace{4pt}
+\hrule height 1.2pt
+\vspace{12pt}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Trilateration}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{slide-03.jpg}
+  \caption{Three anchors at known positions each measure a range $r_i$
+    to the unknown target via a Poll/Response exchange.  Each range defines
+    a circle; the intersection of all three gives the unique target location.}
+\end{figure}
+
+\textbf{Trilateration} estimates an unknown position from distance
+measurements to \textbf{anchors} at known coordinates.
+One range places the target on a circle (2D) or sphere (3D).
+A second narrows this to two candidate points.
+A \textbf{third} gives the unique solution.
+In 3D, four anchors are needed when an additional unknown exists
+(e.g.\ the receiver clock error in GPS).
+
+\clearpage
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Underwater Acoustic Positioning}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-07.jpg}
+  \caption{Underwater sensor network.  Acoustic signals handle ranging
+    between underwater nodes; radio relays the computed position to shore.}
+\end{figure}
+
+The same trilateration principle applies underwater, but radio is not
+an option --- salt water absorbs radio waves within a few centimetres.
+\textbf{Acoustic signals} (sound) are used instead, with $c \approx
+1500$\,m/s, giving the same $r = c\,\Delta t / 2$.
+
+\begin{notebox}
+  \textbf{Two media, two roles --- neither can replace the other.}
+  \textbf{Acoustic} does the ranging underwater (sound travels hundreds
+  of metres; radio absorbed within cm of salt water).
+  \textbf{Radio} relays the already-computed position from a surface
+  buoy to a satellite or shore station (sound too slow and short-range
+  in air; radio travels at $c$ over thousands of km).
+  The surface buoy is the bridge --- listening acoustically below,
+  transmitting by radio above.
+\end{notebox}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{GPS --- Coordinate Systems}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection*{ECEF and local coordinates}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.55\textwidth]{slide-09.jpg}
+  \caption{ECEF coordinate system.  Origin at Earth's centre; $z$
+    toward the north pole; $x$ toward the Greenwich meridian.
+    The frame rotates with the Earth so fixed surface points always
+    have the same $(x,y,z)$.}
+\end{figure}
+
+All GPS calculations use \textbf{ECEF} (Earth-Centred Earth-Fixed) ---
+a Cartesian system rotating with the Earth.
+A point at longitude $\lambda$, latitude $\phi$, radial distance
+$\gamma$ from Earth's centre has ECEF coordinates:
+\[
+  \begin{bmatrix} x \\ y \\ z \end{bmatrix}
+  = \gamma
+    \begin{bmatrix}
+      \cos\phi\cos\lambda \\
+      \cos\phi\sin\lambda \\
+      \sin\phi
+    \end{bmatrix}
+\]
+where $\lambda$ is the angle east/west of Greenwich ($-180^\circ$ to
+$+180^\circ$), $\phi$ is the angle north/south of the equator
+($-90^\circ$ to $+90^\circ$), and $\gamma \approx R_E = 6{,}371$\,km
+for points on the surface.
+
+ECEF is good for the maths but hard to interpret in practice.
+\textbf{Local frames} centred on the observer make errors intuitive:
+
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+  \item \textbf{NED} (North-East-Down): standard in aviation; $z$
+    points into the Earth so altitude increases as $z$ decreases.
+  \item \textbf{ENU} (East-North-Up): $z$ points up, more natural
+    for ground use.
+  \item \textbf{AER} (Azimuth-Elevation-Range): describes a target
+    by compass direction, elevation angle above horizon, and slant
+    distance --- used for pointing at satellites.
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{slide-12.jpg}
+  \caption{NED, ENU, and AER local coordinate systems, all centred at
+    a reference point on the surface.}
+\end{figure}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{GPS --- Pseudoranges and Why 4 Satellites}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{slide-08.jpg}
+  \caption{GPS trilateration in 3D.  Three spheres give two candidate
+    points; a fourth satellite resolves this and simultaneously solves
+    for the unknown receiver clock error.}
+\end{figure}
+
+Standard 3D trilateration needs 3 ranges for 3 unknowns $(x,y,z)$.
+GPS needs a \textbf{fourth satellite} because the receiver clock error
+is a fourth unknown.
+The satellite carries an \textbf{atomic clock} ($< 1$\,\textmu s/day
+drift); the receiver uses a cheap \textbf{quartz oscillator} (tens of
+\textmu s/second drift).
+Because the receiver clock is off by unknown $\tau$, every range
+measurement is corrupted by the same $c\tau$, giving a
+\textbf{pseudorange}:
+\[
+  \boxed{P_S = \rho(t,\,t_S) + c\tau - c\tau_S}
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{p{1.3cm} p{3cm} p{7.5cm}}
+  \toprule
+  \textbf{Symbol} & \textbf{Name} & \textbf{Meaning} \\
+  \midrule
+  $P_S$           & Pseudorange [m]       & Measured apparent distance: raw $\Delta t \times c$ \\
+  $\rho(t,\,t_S)$ & True geometric range  & $\sqrt{(x_S{-}x)^2 + (y_S{-}y)^2 + (z_S{-}z)^2}$ \\
+  $\tau$          & Receiver clock error  & Unknown offset of receiver quartz clock from GPS time \\
+  $\tau_S$        & Satellite clock error & Known --- provided in Navigation Message as polynomial \\
+  $t,\,t_S$       & True times            & True GPS times of reception and transmission \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{notebox}
+  \textbf{Clock drift and the Navigation Message.}
+  Even the satellite's atomic clock drifts slightly.
+  The GPS Control Segment (a global network of ground stations) tracks
+  all satellites, measures their clock deviations, and uplinks
+  correction coefficients packed into the Navigation Message as:
+  \[
+    \delta t^s = a_0 + a_1(t - t_0) + a_2(t - t_0)^2
+  \]
+  where $a_0, a_1, a_2$ are the offset, drift, and drift-rate
+  coefficients, and $t_0$ is the reference epoch.
+  The receiver reads and subtracts this correction, so satellite clock
+  error is essentially a solved problem.
+  The receiver clock error $\tau$ has no such correction and must be
+  solved for alongside $(x,y,z)$ --- hence 4 satellites.
+\end{notebox}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{GPS --- Signal and Cross-Correlation}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-23.jpg}
+  \caption{GPS signal structure.  The L1 carrier (1575.42\,MHz) is
+    phase-modulated by the XOR of the C/A ranging code (1\,Mbps) and
+    the Navigation Message (50\,bps).}
+\end{figure}
+
+The GPS signal is built in three layers, all derived from the atomic
+clock at $f_0 = 10.23$\,MHz:
+
+\begin{itemize}[leftmargin=1.2em,itemsep=3pt]
+  \item \textbf{L1 carrier} ($154 \times f_0 = 1575.42$\,MHz): the
+    radio wave that carries everything through 20\,000\,km of space.
+  \item \textbf{C/A code} ($f_0/10 = 1.023$\,Mbps): a 1023-chip
+    pseudorandom sequence repeating every millisecond.
+    Each satellite uses a \emph{different} code (CDMA), allowing all
+    satellites to share the same frequency without interfering.
+    The fast chip rate gives microsecond-precision timing for ranging.
+  \item \textbf{Navigation Message} (50\,bps): the slow data payload
+    carrying clock corrections, ephemeris, and almanac.
+    Timing comes from the C/A code, not from these bits.
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-24.jpg}
+  \caption{Signal reception via cross-correlation.  The receiver
+    generates a local replica of the satellite's PRN code and slides
+    it in time.  When misaligned the correlation is $\approx 0$;
+    when aligned it spikes to $+1$, giving the clock difference
+    $T - T^s$ and hence the pseudorange.}
+\end{figure}
+
+The receiver measures pseudorange via \textbf{cross-correlation}:
+\[
+  R(k) = \frac{1}{N}\sum_{i=0}^{N-1} x_i \cdot y_{i-k}
+\]
+where $x_i$ is the received chip, $y_{i-k}$ is the local replica
+delayed by $k$ chips, and $N$ is the number of chips summed.
+When the lag $k \neq \Delta t$ the pseudorandom sequences are
+misaligned and products nearly cancel ($R \approx 0$).
+When $k = \Delta t$ every chip multiplies its own copy giving
+$R = +1$ --- a sharp spike.
+The lag at the spike is the travel time:
+\[
+  \Delta t = k \qquad \Rightarrow \qquad \rho = c\,\Delta t
+\]
+This is exactly the same principle as Games-on-Track (chirp instead
+of PRN code): transmit a known pattern, generate a local copy, slide
+until they align --- the required shift is the travel time.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{GPS --- Position Estimation and Error}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection*{Linearisation and least squares}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{slide-26.jpg}
+  \caption{With $m \geq 4$ satellites, the pseudorange equations are
+    linearised around an initial guess giving $b = A\hat{\xi} + \nu$.}
+\end{figure}
+
+With $m$ satellites and satellite clock corrections applied, the
+pseudorange equations become:
+\[
+  \tilde{P}_k = \rho_k(x,y,z) + c\tau, \qquad k = 1,\dots,m
+\]
+This is nonlinear in the unknowns $(x,y,z,\tau)$.
+Linearising around an initial guess $(x_0,y_0,z_0,\tau_0)$ and
+defining the correction vector $\hat{\xi}$ and measurement residual
+$b$:
+\[
+  \hat{\xi} =
+  \begin{bmatrix} x - x_0 \\ y - y_0 \\ z - z_0 \\ \tau - \tau_0
+  \end{bmatrix}, \qquad
+  b =
+  \begin{bmatrix} \tilde{P}_1 - P_{0,1} \\
+    \vdots \\ \tilde{P}_m - P_{0,m}
+  \end{bmatrix}
+\]
+gives the linear system $b = A\hat{\xi} + \nu$, where $\nu$ is the
+fit residual.
+Each row of the Jacobian $A$ is a unit vector pointing from the
+receiver toward satellite $k$, with $c$ appended for the clock
+column:
+\[
+  A_k =
+  \begin{bmatrix}
+    -\dfrac{x_S^{(k)}-x_0}{\rho_{0,k}} &
+    -\dfrac{y_S^{(k)}-y_0}{\rho_{0,k}} &
+    -\dfrac{z_S^{(k)}-z_0}{\rho_{0,k}} & c
+  \end{bmatrix}
+\]
+where $\rho_{0,k}$ is the predicted range to satellite $k$ from the
+initial guess, and $(x_S^{(k)}, y_S^{(k)}, z_S^{(k)})$ is the known
+ECEF position of satellite $k$.
+With $m > 4$ the system is overdetermined; minimising
+$\|\nu\|^2$ gives the \textbf{least-squares solution}:
+\[
+  \boxed{\hat{\xi} = (A^\top A)^{-1} A^\top b}
+\]
+
+\begin{notebox}
+  \textbf{Why more satellites help and why geometry matters (DOP).}
+  With exactly 4 satellites any noise goes straight into the position
+  estimate.
+  With $m > 4$, extra measurements are redundant but useful --- least
+  squares averages out random noise across all satellites.
+  The conditioning of $A^\top A$ quantifies satellite geometry:
+  good spread across the sky $\rightarrow$ $A^\top A$ well-conditioned
+  $\rightarrow$ small position errors.
+  Poor spread $\rightarrow$ $A^\top A$ nearly singular $\rightarrow$
+  large errors.
+  This is exactly what \textbf{DOP} (Dilution of Precision)
+  measures --- a high DOP means bad geometry and amplified errors.
+\end{notebox}
+
+\subsection*{Error propagation and covariance}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.68\textwidth]{slide-28.jpg}
+  \caption{Pseudorange measurement noise $\Sigma_\nu$ propagated
+    through the least-squares formula gives the position covariance
+    $\Sigma_\xi$.}
+\end{figure}
+
+The estimation error propagates from pseudorange noise $\nu$ as:
+\[
+  \nu_\xi = (A^\top A)^{-1} A^\top \nu
+\]
+Taking the expectation of the outer product gives the
+\textbf{covariance matrix} of position errors:
+\[
+  \Sigma_\xi = (A^\top A)^{-1} A^\top \Sigma_\nu A\,(A^\top A)^{-1}
+\]
+where $\Sigma_\nu$ is the $m \times m$ covariance of the pseudorange
+noise.
+Assuming equal, independent noise on all satellites
+($\Sigma_\nu = \sigma_\nu^2 I$) this simplifies to:
+\[
+  \Sigma_\xi = \sigma_\nu^2\,(A^\top A)^{-1}
+\]
+The \textbf{diagonal elements} give individual variances:
+$\sigma_x^2, \sigma_y^2, \sigma_z^2$ for position and $\sigma_\tau^2$
+for the clock error estimate.
+The shape of the uncertainty ellipsoid is determined entirely by
+satellite geometry $(A^\top A)^{-1}$; noise level $\sigma_\nu^2$
+scales the whole thing uniformly.
+
+\subsection*{Uncertainty ellipsoid in local coordinates}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{slide-29.jpg}
+  \caption{The ECEF covariance $\Sigma_\xi$ is rotated into local
+    North-East-Up coordinates using $R_{\phi\lambda}$ for a more
+    intuitive decomposition into horizontal and vertical errors.}
+\end{figure}
+
+An error of 5\,m in the ECEF $x$-direction is hard to interpret.
+Rotating into local North-East-Up (NEU) coordinates makes it
+meaningful:
+\[
+  \nu_\text{NEU} = R_{\phi\lambda}\,\nu_\xi, \qquad
+  \Sigma_\text{NEU} = R_{\phi\lambda}\,\Sigma_\xi\,R_{\phi\lambda}^\top
+\]
+where the rotation matrix at latitude $\phi$ and longitude $\lambda$
+is:
+\[
+  R_{\phi\lambda} =
+  \begin{bmatrix}
+    -\sin\phi\cos\lambda & -\sin\phi\sin\lambda &  \cos\phi \\
+    -\sin\lambda         &  \cos\lambda         &  0        \\
+     \cos\phi\cos\lambda &  \cos\phi\sin\lambda &  \sin\phi
+  \end{bmatrix}
+\]
+The diagonal of $\Sigma_\text{NEU}$ now gives
+$\sigma_\text{North}^2$, $\sigma_\text{East}^2$,
+$\sigma_\text{Up}^2$ --- directly telling you the horizontal spread
+and vertical offset of the uncertainty ellipsoid.
+
+\subsection*{Tracking moving targets with a Kalman filter}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\textwidth]{slide-30.jpg}
+  \caption{A Kalman filter takes consecutive GPS position estimates
+    and infers both position and velocity using a constant-velocity
+    motion model.}
+\end{figure}
+
+GPS gives a new position estimate every second; a
+\textbf{Kalman filter} turns this into a smooth position-and-velocity
+track.
+With no other information, a constant-velocity model is used:
+\[
+  \chi_k =
+  \begin{bmatrix} x_k \\ y_k \\ z_k \\ v_{x,k} \\ v_{y,k} \\ v_{z,k}
+  \end{bmatrix}, \quad
+  \Phi =
+  \begin{bmatrix}
+    1 & 0 & 0 & T_s & 0   & 0   \\
+    0 & 1 & 0 & 0   & T_s & 0   \\
+    0 & 0 & 1 & 0   & 0   & T_s \\
+    0 & 0 & 0 & 1   & 0   & 0   \\
+    0 & 0 & 0 & 0   & 1   & 0   \\
+    0 & 0 & 0 & 0   & 0   & 1
+  \end{bmatrix}, \quad
+  H = \begin{bmatrix} I & 0 \end{bmatrix} \in \mathbb{R}^{3\times6}
+\]
+where $\chi_k$ is the state vector of position and velocity,
+$\Phi$ is the state transition matrix with sample time $T_s$,
+and $H$ extracts position only (GPS measures position, not velocity
+directly --- the filter infers velocity from how position changes
+between steps).
+The covariance $\Sigma_\nu$ from the previous section is used directly
+as the measurement noise covariance in the Kalman filter.
+
+\begin{keybox}
+  \textbf{Lecture 8 --- Key Takeaways}
+  \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item \textbf{BLE RSSI}: range via $\hat{\rho} = 10^{(A-S)/(10\gamma)}$.
+      No timing hardware; 1--5\,m accuracy indoors due to multipath
+      and $\gamma$ uncertainty.
+    \item \textbf{Games-on-Track / GPS}: TOF via cross-correlation of a
+      known pattern (chirp / PRN code). Locks onto first-arriving signal;
+      robust to multipath; needs dedicated timing hardware.
+    \item \textbf{Underwater}: radio replaced by acoustic
+      ($c \approx 1500$\,m/s); same TOF principle. Radio used only at
+      surface to relay position to shore.
+    \item \textbf{GPS pseudorange}: $P_S = \rho + c\tau - c\tau_S$.
+      Satellite clock error $\tau_S$ corrected via Navigation Message
+      polynomial. Receiver clock error $\tau$ solved alongside
+      $(x,y,z)$ --- requires 4 satellites minimum.
+    \item \textbf{Least squares}: $\hat{\xi} = (A^\top A)^{-1}A^\top b$,
+      where each row of $A$ is a unit vector toward a satellite with $c$
+      appended. More satellites reduce noise; satellite geometry (DOP)
+      determines how much noise gets amplified into position error.
+    \item \textbf{Covariance}: $\Sigma_\xi = \sigma_\nu^2(A^\top A)^{-1}$;
+      rotated to local NEU for interpretable horizontal/vertical errors.
+      Fed directly into a Kalman filter for tracking moving targets.
+    \item \textbf{ECEF} rotates with Earth; local frames (NED, ENU, AER)
+      express errors relative to the observer.
+  \end{itemize}
+\end{keybox}
+
+\end{document}
