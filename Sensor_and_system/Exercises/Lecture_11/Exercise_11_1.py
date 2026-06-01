@@ -136,7 +136,7 @@ for k in range(N):
     S = H @ P @ H.T + R                     # total uncertianty: model uncertainty on measurement and measurement noise
     K = P @ H.T @ np.linalg.inv(S)          # Kalman gain: (model uncertianty / total uncertianty) if Larger = trust measurement
 
-    x_update = x_pred + K @ (z - H @ x_pred)    # pred + innovation kalman scaled
+    x_update = x_pred + K @ (z - H @ x_pred)    # pred + innovation kalman scaled (best estimation of state)
 
     # Covariance update
     P = (I - K @ H) @ P @ (I - K @ H).T + K @ R @ K.T   # joseph form update uncertianty (decrease as get measurement)
