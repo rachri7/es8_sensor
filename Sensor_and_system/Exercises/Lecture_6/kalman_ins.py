@@ -110,6 +110,7 @@ import matplotlib.gridspec as gridspec
 from pathlib import Path
 from scipy import signal as sp_signal
 
+
 # ── constants ────────────────────────────────────────────────────────────────
 G_TO_MS2 = 9.81      # 1 g in m/s²
 FS       = 13.0      # sample rate Hz
@@ -121,111 +122,33 @@ TS       = 1.0 / FS  # sample period s  (≈ 0.0769 s)
 ###############################################
 
 def load_csv(path: str, axis: int = 0) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Load accelerometer CSV with format:  ax, ay, az  (in g, no header, no timestamp)
-    e.g.   0.01074219,-0.01831055,1.02587891
- 
-    axis: which column to use as the measurement axis
-          0 = x  (default — direction of sliding on the table)
-          1 = y
-          2 = z  (vertical, includes ~1g gravity when flat)
- 
-    Time is reconstructed from sample index assuming constant FS (13 Hz).
-    Values are converted from g to m/s².
-    """
-    data  = np.loadtxt(path, delimiter=",")   # no header to skip
+    data  = np.loadtxt(path, delimiter=",")   
     n     = data.shape[0]
     t_s   = np.arange(n) * TS                 # reconstruct time from sample index
-    a_ms2 = data[:, axis] * G_TO_MS2          # selected axis, g -> m/s²
+    a_ms2 = data[:, axis] * G_TO_MS2          # selected axis, g -> m/s^2
     return t_s, a_ms2
-
-
-# TO Create fake data Probally remove
-def demo_data(duration_static=60.0, duration_motion=25.0, seed=42):
-    """
-    Synthetic data designed to clearly show the difference between all three methods.
-
-    Key design choices:
-      - Motion is 25 s so the 4-state KF has time to converge the bias estimate
-      - True acceleration is a realistic windowed sinusoid — starts and ends at
-        zero velocity and zero net displacement (like a careful hand movement)
-      - Bias is 0.08 g — large enough to cause obvious drift when not corrected
-      - Sensor noise is 0.015 g — small relative to bias, so bias dominates
-        the drift problem, which is exactly the point of the exercise
-
-    Expected results:
-      benchmark  -> large position drift   (bias integrates unboundedly)
-      3-state KF -> moderate improvement   (bias not modelled, still drifts)
-      4-state KF -> close to zero at end   (bias estimated and removed)
-    """
-    rng = np.random.default_rng(seed)
-
-    # Bias >> noise: this is the realistic Arduino case and the core problem
-    true_bias    = 0.08 * G_TO_MS2    # 0.08 g — realistic Arduino offset
-    sensor_noise = 0.015 * G_TO_MS2   # 0.015 g — typical IMU noise floor
-
-    # static recording
-    n_s      = int(duration_static * FS)
-    t_static = np.arange(n_s) * TS
-    a_static = true_bias + rng.normal(0, sensor_noise, n_s)
-
-    # motion recording
-    # True acceleration: windowed sinusoid — tapers to zero at both ends so
-    # true velocity and position naturally return to zero at the end.
-    # This mimics two gentle forth-and-back slides on the table.
-    n_m      = int(duration_motion * FS)
-    t_motion = np.arange(n_m) * TS
-    freq     = 2.0 / duration_motion                         # 2 cycles total
-    window   = np.sin(np.pi * t_motion / duration_motion)   # tapers start+end
-    a_true   = 0.25 * window * np.sin(2 * np.pi * freq * t_motion)
-
-    # True velocity and position (ground truth — only exists in demo mode)
-    v_true = np.cumsum(a_true) * TS
-    p_true = np.cumsum(v_true) * TS
-
-    # Measured signal = true acceleration + constant bias + white noise
-    a_motion = a_true + true_bias + rng.normal(0, sensor_noise, n_m)
-
-    print(f"  [demo] True end velocity : {v_true[-1]:.4f} m/s  (should be ~0)")
-    print(f"  [demo] True end position : {p_true[-1]:.4f} m   (should be ~0)")
-    print(f"  [demo] True bias         : {true_bias:.4f} m/s²  ({true_bias/G_TO_MS2:.3f} g)")
-    print(f"  [demo] Sensor noise std  : {sensor_noise:.4f} m/s²  ({sensor_noise/G_TO_MS2:.3f} g)")
-    print(f"  [demo] Bias/noise ratio  : {true_bias/sensor_noise:.1f}x  (bias >> noise)")
-
-    return t_static, a_static, t_motion, a_motion, true_bias, v_true, p_true
-
 
 # ---- STEP 1 — SENSOR ANALYSIS: Measure Bais and Process Noise std ----
 
-def sensor_analysis(t: np.ndarray, a: np.ndarray) -> dict:
-    """
-    Compute bias and noise statistics from a static (stationary) recording.
-
-    ASSUMPTION: Arduino was perfectly still during this recording.
-    Therefore any variation in the signal is purely sensor noise, not motion.
-    This gives us:
-      - bias = mean(a)        the constant offset the sensor adds
-      - std  = std(a)         the noise standard deviation
-      - R    = std²           the measurement noise variance for the KF
-    """
-    bias = np.mean(a)
-    std  = np.std(a, ddof=1)
-    var  = std ** 2
-
+def sensor_analysis(t: np.ndarray, a: np.ndarray) -> dict:  # calibration of sensor
+    bias = np.mean(a)                       # we set bais = mean of all measurement 
+    std  = np.std(a, ddof=1)                # standard deviation of a
+    var  = std ** 2                         # variance
+    # all to be further used for Measurement Noise and initial estimation of bais and bias variance
     result = dict(bias=bias, std=std, var=var, min=a.min(), max=a.max(), n=len(a))
 
+    # Simply to show what we got out from the calibration, mean,std, variance, min and max accelartion measurements
     print("=" * 60)
     print("STEP 1 — SENSOR ANALYSIS")
     print("=" * 60)
     print(f"  Samples        : {len(a)}  ({len(a)/FS:.1f} s at {FS} Hz)")
     print(f"  Bias (mean)    : {bias:+.5f} m/s²  =  {bias/G_TO_MS2:+.5f} g")
     print(f"  Noise std      : {std:.5f} m/s²  =  {std/G_TO_MS2:.5f} g")
-    print(f"  R = std²       : {var:.6f} m²/s⁴   <- this goes into the KF")
+    print(f"  R = std²       : {var:.6f} m²/s⁴   <- Use for Measurment Noise in the KF")
     print(f"  Min / Max      : {a.min():.5f} / {a.max():.5f} m/s²")
     print()
-    print("  R is the ONLY parameter taken from measured data.")
-    print("  sigma_a and sigma_qb are design choices, set separately.")
 
+    # simply to plot but mean and the variance we observe
     fig, axes = plt.subplots(1, 1, figsize=(10, 5), tight_layout=True)
     fig.suptitle("Step 1 — Sensor analysis (static recording)", fontweight="bold")
 
@@ -245,27 +168,19 @@ def sensor_analysis(t: np.ndarray, a: np.ndarray) -> dict:
 
 # ---- STEP 2 — BENCHMARK: direct double integration (pure kinematics)
 
-# Can Remove just for your own NOTES
-'''
-    EXPECTED RESULT: velocity and position drift badly.
-    Any small sensor bias accumulates unboundedly through integration.
-    This is WHY the Kalman filter is needed.
-'''
+# EXPECTED RESULT: velocity and position drift badly, 
+# becuae no justificatin of uncertianty just pure kinematic
 def benchmark(t: np.ndarray, a: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Integrate acceleration once for velocity, twice for position.
-    ASSUMPTION: v(0) = 0, p(0) = 0  (known start condition).
-    """
     n = len(a)
     v = np.zeros(n)
     p = np.zeros(n)
     for k in range(n - 1):
-        v[k+1] = v[k] + a[k] * TS
-        p[k+1] = p[k] + v[k] * TS
+        v[k+1] = v[k] + a[k] * TS       # velocity = previus veloty + acceleration * time (intrgrate acceleration)
+        p[k+1] = p[k] + v[k] * TS       # position = prevoius positin + velocity * time (integrate velocity)
     return v, p
 
 
-# KALMAN FILTER — ALGORITHM RUN (Same for both just different H and PHI Matrixs)
+# KALMAN FILTER — ALGORITHM RUN (Same for both KF Filters just different H and PHI Matrixs)
 def run_kf(measurements: np.ndarray, Phi, Q, H, R, x0, P0):
     """
     Standard linear Kalman filter.
@@ -276,13 +191,17 @@ def run_kf(measurements: np.ndarray, Phi, Q, H, R, x0, P0):
     """
     n  = len(measurements)
     nx = len(x0)
-    x  = x0.copy().astype(float)
-    P  = P0.copy().astype(float)
+    x  = x0.copy().astype(float)            #same size as x0
+    P  = P0.copy().astype(float)            # same size of intial covariance uncertianty
 
-    x_hist   = np.zeros((n, nx))
-    std_hist = np.zeros((n, nx))
+    x_hist   = np.zeros((n, nx))            # store state estimatino
+    std_hist = np.zeros((n, nx))            # store std
 
     for k in range(n):
+        # ---- time update (predict next state) forward throught state transtion matrix ---
+        x = Phi @ x
+        P = Phi @ P @ Phi.T + Q
+
         # --- measurement update ---
         
         innov = np.array([[measurements[k]]]) - H @ x.reshape(-1, 1)    # Innovation: measured - predicted
@@ -297,83 +216,37 @@ def run_kf(measurements: np.ndarray, Phi, Q, H, R, x0, P0):
         x_hist[k]   = x                         # state estimates
         std_hist[k] = np.sqrt(np.diag(P))       # std dev of each state (for +-2 sigma confidence intervals plot)
 
-        # ---- time update (predict next state) forward throught state transtion matrix ---
-        x = Phi @ x
-        P = Phi @ P @ Phi.T + Q
-
     return x_hist, std_hist
 
-###################################################
-### REMOVE COMMENT FOR KALMAN 3a,3b ON YOUR OWN
-#################################################
 
 # ---- STEP 3a — 3-STATE KALMAN FILTER (no bias) - States: x = [a, v, p] ----
 
-def kf_no_bias(t, a, sensor_stats, omega_b, sigma_a):
-    """
-    3-state KF following eq (5)-(6) in PDF, without bias state.
+def kf_no_bias(t, a, sensor_stats, omega_b, sigma_a):   # simple defination 3 state kalman, don't , model bais
+    phi = np.exp(-omega_b * TS)         # large omega_b (Acceleration bandwidth) -> smaller phi
 
-    State transition matrix Phi (forward Euler, eq 3):
-      a(k+1) = phi * a(k) + w_a     ← AR(1) model for acceleration
-      v(k+1) = v(k) + a(k)*Ts       ← kinematics
-      p(k+1) = p(k) + v(k)*Ts       ← kinematics
+    sigma_qa = sigma_a * np.sqrt(1 - phi**2)        # set sigma based of how large expect real accelerations will be
 
-    Measurement model H = [1, 0, 0]:
-      y(k) = a(k) + v_k             ← we only measure acceleration
-
-    PARAMETER CHOICES:
-      phi     : AR(1) pole = exp(-omega_b * Ts)
-                Controls how fast acceleration state changes.
-                omega_b is the bandwidth you choose for expected hand motion.
-
-      sigma_qa: process noise on acceleration state, derived from PDF eq (2b):
-                sigma²_qa = sigma²_a * (1 - phi²)
-                sigma_a is YOUR choice of expected motion magnitude.
-                This has NOTHING to do with R (sensor noise).
-
-      R       : measurement noise variance, from static recording.
-                This is FIXED — comes from sensor_analysis().
-
-      Q       : process noise matrix. Only acceleration has process noise.
-                Velocity and position are derived by kinematics so Q[1,1]=Q[2,2]=0.
-                ASSUMPTION: kinematic equations are exact given true acceleration.
-
-      P0      : initial covariance. We know start conditions well (v=0, p=0)
-                so we set P0 small. Small ≠ zero — zero would mean perfect
-                certainty which is unrealistic.
-    """
-    # phi from eq (2a): AR(1) pole for acceleration model
-    phi = np.exp(-omega_b * TS)
-
-    # sigma_qa from PDF eq (2b) rearranged:
-    # sigma²_a = sigma²_qa / (1 - phi²)  ->  sigma_qa = sigma_a * sqrt(1-phi²)
-    # ASSUMPTION: sigma_a represents the typical magnitude of hand acceleration.
-    # It is a DESIGN parameter, not measured. Typical range: 0.2 – 1.0 m/s².
-    sigma_qa = sigma_a * np.sqrt(1 - phi**2)
-
-    Phi = np.array([
-        [phi, 0,  0],
-        [TS,  1,  0],
-        [0,  TS,  1],
+    Phi = np.array([                    
+        [phi, 0,  0],           # AR(1) model for acceleration
+        [TS,  1,  0],           # kinematics
+        [0,  TS,  1],           # kinematics
     ])
 
-    # Q: only acceleration has process noise (eq 5b from PDF)
+    # Q: only acceleration has process noise, because only measured
+    # Velocity and position uncertainties arise through the state dynamics.
     Q = np.diag([sigma_qa**2, 0.0, 0.0])
 
-    # H: we measure acceleration only (eq 7 from PDF, without bias)
+    # H: we measure acceleration only
     H = np.array([[1.0, 0.0, 0.0]])
 
-    # R: from static sensor measurement — NOT a tuning parameter
+    # R: from static sensor measurement - measurement noise
     R = np.array([[sensor_stats["var"]]])
 
     # Initial state: known to be zero (start at rest)
     x0 = np.zeros(3)
 
-    # Initial covariance: small diagonal
-    # ASSUMPTION: we are fairly confident about initial conditions.
-    # Using sensor variance as a rough scale for initial uncertainty.
-    P0 = np.diag([sensor_stats["var"], 1e-6, 1e-6])
-
+    # Initial covariance: set zero we know we start still
+    P0 = np.diag([0, 0, 0])
 
     x_est, std_est = run_kf(a, Phi, Q, H, R, x0, P0)
 
@@ -383,60 +256,23 @@ def kf_no_bias(t, a, sensor_stats, omega_b, sigma_a):
 # --- STEP 3b — 4-STATE KALMAN FILTER (with bias estimation) - x = [a, v, p, b] ----
 
 def kf_with_bias(t, a, sensor_stats, omega_b, sigma_a, sigma_qb):
-    """
-    4-state KF following eq (5b) in PDF, with bias state added.
+    phi = np.exp(-omega_b * TS)         # large omega_b (Acceleration bandwidth) -> smaller phi
 
-    The bias state b models the slowly-varying sensor offset.
-    Bias model (eq 4a): b(k+1) = b(k) + w_b   (random walk)
-    Measurement model (eq 6): y(k) = a(k) + b(k) + v_k
-    So H = [1, 0, 0, 1] — measurement depends on both acceleration and bias.
-
-    WHY ADD BIAS STATE:
-    Without it, a constant sensor offset is mistaken for real acceleration,
-    which integrates into velocity and position drift (seen in benchmark).
-    The 4-state KF estimates and removes this offset automatically.
-
-    PARAMETER CHOICES vs 3-STATE KF:
-      phi, sigma_qa, R : same reasoning as 3-state KF above.
-
-      sigma_qb : process noise on bias random walk.
-                 ASSUMPTION: bias is nearly constant but can drift slowly.
-                 Small sigma_qb -> bias changes very slowly (conservative).
-                 Large sigma_qb -> bias can change quickly (more adaptive).
-                 Typical starting value: much smaller than sigma_qa.
-                 Rule of thumb: sigma_qb << sigma_qa
-
-      R: same as before — from static recording.
-         ASSUMPTION: since we now model bias separately as a state,
-         R should represent ONLY the white noise part of the sensor.
-         The bias (systematic offset) is now handled by the bias state,
-         not lumped into R. So R stays the same value from step 1.
-
-      P0[3,3] (initial bias covariance):
-         ASSUMPTION: we don't know the initial bias exactly (it varies
-         between Arduinos). We set P0[3,3] = sensor variance as a starting
-         guess — it says "I expect the bias to be roughly on the order of
-         the sensor noise std." The filter will converge to the true value.
-         Using the measured bias from static data would be better if
-         you're confident it won't change, but the PDF says to start at 0.
-    """
-    phi      = np.exp(-omega_b * TS)
-    sigma_qa = sigma_a * np.sqrt(1 - phi**2)
+    sigma_qa = sigma_a * np.sqrt(1 - phi**2)        # set sigma based of how large expect real accelerations will be
 
     # State transition: same as 3-state but with bias appended
-    # bias walks as b(k+1) = b(k) + w_b  -> Phi[3,3] = 1
     Phi = np.array([
         [phi, 0,  0, 0],
         [TS,  1,  0, 0],
         [0,  TS,  1, 0],
-        [0,   0,  0, 1],
+        [0,   0,  0, 1],                # bias walks as b(k+1) = b(k) + w_b  -> Phi[3,3] = 1 (random walk)
     ])
 
     # Q: process noise on acceleration AND bias
     # Velocity and position still have no direct process noise (kinematics)
     Q = np.diag([sigma_qa**2, 0.0, 0.0, sigma_qb**2])
 
-    # H: measurement = acceleration state + bias state (eq 6 from PDF)
+    # H: measurement = acceleration state + bias state
     H = np.array([[1.0, 0.0, 0.0, 1.0]])
 
     # R: same as 3-state — from static recording
@@ -448,17 +284,15 @@ def kf_with_bias(t, a, sensor_stats, omega_b, sigma_a, sigma_qb):
     # Initial covariance:
     # a,v,p (acceleration,velocity,postion) all set to zero we know start at this points
 
-    # Set (bias variance) P0[4,4] = R (sensor variance from static recording). This says we expect
-    # the bias to be roughly on the order of the sensor noise std. We do not know
-    # the exact bias at start (it varies between Arduinos), so this is a reasonable
-    # starting scale. The filter will converge to the true value regardless
+    # Set (bias variance) P0[4,4] = R (sensor variance from static recording). 
+    # We expect bais roughly on the order of the sensor noise std
 
     P0 = np.diag([0, 0, 0, sensor_stats["var"]])
     
     # Reflection quistion(4) set to Identity, this means we unsure about a,v,p but we know its zero at start
     #P0 = np.diag([1, 1, 1, sensor_stats["var"]])
 
-
+    # short summary of what is used of variables, same as 
     print("\n Variables set for the Kalman Filter (with bias estimation)")
     print(f"  omega_b   = {omega_b:.3f} rad/s   ->  phi = {phi:.5f}")
     print(f"  sigma_a   = {sigma_a:.4f} m/s²  (design choice, same as 3-state KF)")
@@ -467,7 +301,6 @@ def kf_with_bias(t, a, sensor_stats, omega_b, sigma_a, sigma_qb):
     print(f"  Q[0,0]    = {sigma_qa**2:.6f}  Q[3,3] = {sigma_qb**2:.8f}  m²/s⁴  (Process noise variance for Acceleration and Bais)")  
     print(f"  R         = {sensor_stats['var']:.6f} m²/s⁴  (from static recording — fixed)")
     print(f"  P0[3,3]   = {sensor_stats['var']:.6f}  (initial bias uncertainty)")
-    print("\n Note: R and Q[0,0] are independent. Do not confuse them.")
 
     x_est, std_est = run_kf(a, Phi, Q, H, R, x0, P0)
 
@@ -480,7 +313,7 @@ def kf_with_bias(t, a, sensor_stats, omega_b, sigma_a, sigma_qb):
 # PLOTTING
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _annotate_final(ax, t, values, color, label):
+def _annotate_final(ax, t, values, color, label): 
     """
     Mark the final value of a signal with a dot + text annotation.
     This shows drift clearly — for velocity and position it should be ~0.
@@ -497,7 +330,6 @@ def _annotate_final(ax, t, values, color, label):
         arrowprops=dict(arrowstyle="-", color=color, lw=0.6),
     )
  
- 
 def _mark_zero_conditions(ax, t):
     """
     Mark the known ground-truth zero conditions at start and end.
@@ -508,7 +340,7 @@ def _mark_zero_conditions(ax, t):
                color="green", s=50, zorder=6,
                marker="D", label="known = 0")
  
-def plot_results(t, a, v_bench, p_bench, x3, std3, x4, std4, true_bias=None, v_true=None, p_true=None,measured_bias=None):
+def plot_results(t, a, v_bench, p_bench, x3, std3, x4, std4,measured_bias=None):
     """
     Single figure — 2x2 grid, all three methods overlaid on each subplot.
  
@@ -559,8 +391,6 @@ def plot_results(t, a, v_bench, p_bench, x3, std3, x4, std4, true_bias=None, v_t
     ax_v.plot(t, x4[:, 1], lw=1.5, color=col_kf4,           label="4-state KF")
     ax_v.fill_between(t, x4[:,1]-2*std4[:,1], x4[:,1]+2*std4[:,1],
                       alpha=alpha_ci, color=col_kf4, label=f"KF4 -+2σ = {2*std4[-1,1]:.4f} in the end")
-    if v_true is not None:
-        ax_v.plot(t, v_true, lw=1.2, color="green", ls="-.", label="true (demo)")
     ax_v.axhline(0, color="k", lw=0.5, ls="--", alpha=0.5)
     _mark_zero_conditions(ax_v, t)
     _annotate_final(ax_v, t, v_bench,  col_bench, "bench")
@@ -580,8 +410,6 @@ def plot_results(t, a, v_bench, p_bench, x3, std3, x4, std4, true_bias=None, v_t
     ax_p.plot(t, x4[:, 2], lw=1.5, color=col_kf4,           label="4-state KF")
     ax_p.fill_between(t, x4[:,2]-2*std4[:,2], x4[:,2]+2*std4[:,2],
                       alpha=alpha_ci, color=col_kf4, label=f"KF4 -+2σ = {2*std4[-1,2]:.4f} in the end")
-    if p_true is not None:
-        ax_p.plot(t, p_true, lw=1.2, color="green", ls="-.", label="true (demo)")
     ax_p.axhline(0, color="k", lw=0.5, ls="--", alpha=0.5)
     _mark_zero_conditions(ax_p, t)
     _annotate_final(ax_p, t, p_bench,  col_bench, "bench")
@@ -597,51 +425,9 @@ def plot_results(t, a, v_bench, p_bench, x3, std3, x4, std4, true_bias=None, v_t
     ax_b.plot(t, x4[:, 3], lw=1.5, color=col_kf4, label="KF4 bias estimate b̂")
     ax_b.fill_between(t, x4[:,3]-2*std4[:,3], x4[:,3]+2*std4[:,3],
                       alpha=0.2, color=col_kf4, label=f"KF4 -+2σ = {2*std4[-1,3]:.4f} in the end")
-    if true_bias is not None:
-        ax_b.axhline(true_bias, color="k", lw=1.2, ls="--",
-                     label=f"true bias = {true_bias:.4f} m/s²")
     if measured_bias is not None:
         ax_b.axhline(measured_bias, color="green", lw=1.5, ls="-",
                      label=f"measured bias (static) = {measured_bias:.4f} m/s²")
-    ax_b.axhline(0, color="k", lw=0.4, ls=":", alpha=0.4)
-    _annotate_final(ax_b, t, x4[:, 3], col_kf4, "converged")
-    ax_b.set_title("Bias estimate (4-state KF only)", fontsize=10)
-    ax_b.set_ylabel("m/s²")
-    ax_b.set_xlabel("Time (s)")
-    ax_b.legend(fontsize=8)
-    ax_b.grid(True, alpha=0.25)
- 
-    fig.savefig("kf_results.png", dpi=150)
-    plt.show()
- 
-    # ── bottom-left: position ─────────────────────────────────────────────────
-    ax_p.plot(t, p_bench,  lw=2.0, color="black",   ls=":",  label="benchmark", zorder=5)
-    ax_p.plot(t, x3[:, 2], lw=1.2, color=col_kf3,           label="3-state KF")
-    ax_p.fill_between(t, x3[:,2]-2*std3[:,2], x3[:,2]+2*std3[:,2],
-                      alpha=alpha_ci, color=col_kf3, label="KF3 ±2σ")
-    ax_p.plot(t, x4[:, 2], lw=1.5, color=col_kf4,           label="4-state KF")
-    ax_p.fill_between(t, x4[:,2]-2*std4[:,2], x4[:,2]+2*std4[:,2],
-                      alpha=alpha_ci, color=col_kf4, label="KF4 ±2σ")
-    if p_true is not None:
-        ax_p.plot(t, p_true, lw=1.2, color="green", ls="-.", label="true (demo)")
-    ax_p.axhline(0, color="k", lw=0.5, ls="--", alpha=0.5)
-    _mark_zero_conditions(ax_p, t)
-    _annotate_final(ax_p, t, p_bench,  col_bench, "bench")
-    _annotate_final(ax_p, t, x3[:, 2], col_kf3,   "KF3")
-    _annotate_final(ax_p, t, x4[:, 2], col_kf4,   "KF4")
-    ax_p.set_title("Position", fontsize=10)
-    ax_p.set_ylabel("m")
-    ax_p.set_xlabel("Time (s)")
-    ax_p.legend(fontsize=8)
-    ax_p.grid(True, alpha=0.25)
- 
-    # ── bottom-right: bias estimate ───────────────────────────────────────────
-    ax_b.plot(t, x4[:, 3], lw=1.5, color=col_kf4, label="KF4 bias estimate b̂")
-    ax_b.fill_between(t, x4[:,3]-2*std4[:,3], x4[:,3]+2*std4[:,3],
-                      alpha=0.2, color=col_kf4, label="±2σ")
-    if true_bias is not None:
-        ax_b.axhline(true_bias, color="k", lw=1.2, ls="--",
-                     label=f"true bias = {true_bias:.4f} m/s²")
     ax_b.axhline(0, color="k", lw=0.4, ls=":", alpha=0.4)
     _annotate_final(ax_b, t, x4[:, 3], col_kf4, "converged")
     ax_b.set_title("Bias estimate (4-state KF only)", fontsize=10)
@@ -682,45 +468,27 @@ def main():
 
     parser.add_argument("--static",   type=str,   help="CSV from static recording")
     parser.add_argument("--motion",   type=str,   help="CSV from motion recording")
-    parser.add_argument("--demo",     action="store_true", help="Run with synthetic data")
     parser.add_argument("--omega_b",  type=float, default=0.5,   help="Accel bandwidth rad/s (default: 0.5)")
     parser.add_argument("--sigma_a",  type=float, default=0.5,   help="Expected accel std m/s² (default: 0.5)")
     parser.add_argument("--sigma_qb", type=float, default=0.05,  help="Bias random walk std m/s² (default: 0.05)")
     parser.add_argument("--axis",     type=int,   default=0,     help="Accelerometer axis to use: 0=x, 1=y, 2=z (default: 0)")
     args = parser.parse_args()
 
-    # ---- load data -------------
-    true_bias = None
-    v_true    = None   # only available in demo mode (no ground truth with real hardware)
-    p_true    = None
-
-    ##################################################################
-    ##### NEED TO REMOVE THIS IF STATEMENT FOR DEMO TOGETHER WITH ARG
-    ###################################################################
-
-    if args.demo or (args.static is None and args.motion is None):
-        print("Running in DEMO mode with synthetic data.\n")
-        t_static, a_static, t_motion, a_motion, true_bias, v_true, p_true = demo_data()
-    else:
-        if args.static is None or args.motion is None:
-            parser.error("Provide both --static and --motion CSV files, or use --demo")
-        t_static, a_static = load_csv(args.static, axis=args.axis)
-        t_motion, a_motion = load_csv(args.motion, axis=args.axis)
+    
+    if args.static is None or args.motion is None:
+        parser.error("Provide both --static and --motion CSV files, or use --demo")
+    t_static, a_static = load_csv(args.static, axis=args.axis)
+    t_motion, a_motion = load_csv(args.motion, axis=args.axis)
 
     # ----- step 1: sensor analysis to get R Process noise std and bias ----------------
     sensor_stats = sensor_analysis(t_static, a_static)
 
     # ----- step 2: benchmark Double intergration -------
-    print("=" * 60)
-    print("STEP 2 — BENCHMARK (double integration)")
-    print("=" * 60)
-
     v_bench, p_bench = benchmark(t_motion, a_motion)
-    print("  Large drift is expected — this shows WHY KF is needed.")
 
     # ----- step 3a: 3-state KF: Get all state estimations and +-2 sigma -------------------------------
     print("=" * 60)
-    print("STEP 3 — Kalman with and without bais state")
+    print("Kalman parameters with and without bais state")
     print("=" * 60)
 
     x3, std3 = kf_no_bias(
@@ -748,11 +516,6 @@ def main():
     print(f"  {'Benchmark':.<25} {p_bench[-1]:>+12.4f}  {v_bench[-1]:>+14.4f}")
     print(f"  {'3-state KF (no bias)':.<25} {x3[-1,2]:>+12.4f}  {x3[-1,1]:>+14.4f}")
     print(f"  {'4-state KF (+ bias)':.<25} {x4[-1,2]:>+12.4f}  {x4[-1,1]:>+14.4f}")
-    if true_bias is not None:
-        print(f"\n  True bias (demo only) : {true_bias:.4f} m/s²  ({true_bias/G_TO_MS2:.3f} g)")
-        print(f"  KF4 bias estimate     : {x4[-1,3]:.4f} m/s²  ({x4[-1,3]/G_TO_MS2:.3f} g)")
-        err = abs(x4[-1,3] - true_bias)
-        print(f"  Bias estimation error : {err:.4f} m/s²  ({err/true_bias*100:.1f}% of true)")
     # Grade each method by absolute end position error (lower = better)
     errors = {
         "Benchmark":    abs(p_bench[-1]),
@@ -761,8 +524,7 @@ def main():
     }
     # ── plots ─────────────────────────────────────────────────────────────────
     plot_results(t_motion, a_motion, v_bench, p_bench,
-                 x3, std3, x4, std4,
-                 true_bias=true_bias, v_true=v_true, p_true=p_true,measured_bias=sensor_stats["bias"])
+                 x3, std3, x4, std4,measured_bias=sensor_stats["bias"])
 
 
 if __name__ == "__main__":

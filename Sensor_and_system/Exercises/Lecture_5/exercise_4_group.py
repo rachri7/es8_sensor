@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+np.random.seed(4)
 # ===============================
 # Parameters
 # ===============================
@@ -71,7 +72,8 @@ H_kf = np.array([
     [0, 0, 0, 0, 0, 0, 1, 1]
 ])
 
-R = np.diag([sigma_v_x**2, sigma_v_y**2])
+R = np.diag([sigma_v_x**2, sigma_v_y**2])       # includes to measurement noise, cause two sensors
+# (also 2states now)
 
 # ===============================
 # Storage
@@ -88,8 +90,8 @@ P = np.eye(8)
 w1 = 2*np.pi*0.1
 w2 = 2*np.pi*1
 
-a_input_x = np.sin(w1*time) + 0.7*np.sin(w2*time)
-a_input_y = np.sin(w1*time) + 0.7*np.sin(w2*time)
+a_input_x = np.sin(w1*time) + 0.7*np.sin(w2*time)       # determinstic input (known)
+a_input_y = np.sin(w1*time) + 0.7*np.sin(w2*time)       # determinstic input (known)
 
 # ===============================
 # Simulation + KF
@@ -98,6 +100,7 @@ a_input_y = np.sin(w1*time) + 0.7*np.sin(w2*time)
 for k in range(N-1):
 
     # ---- True system ----
+    # state transtion and input
     x_true[:,k+1] = Phi_true @ x_true[:,k] + Gamma @ np.array([a_input_x[k], a_input_y[k]])
 
 
@@ -120,7 +123,8 @@ for k in range(N-1):
 
     # update for state and covariance
     x_hat[:,k+1] = x_pred + K @ innovation
-    P = (np.eye(8) - K @ H_kf) @ P_pred     #joseph form
+    I = np.eye(8)
+    P = (I - K @ H_kf) @ P_pred @ (I - K @ H_kf).T + K @ R @ K.T      #joseph form        
 
 # ===============================
 # Plot Results

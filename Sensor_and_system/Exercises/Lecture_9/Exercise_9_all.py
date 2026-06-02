@@ -17,7 +17,7 @@ k_    = 1                 # desired steady-state gain       ,settles at exactly 
 b_p   = k_ * (1 - a)     # input gain: derived from k and it balances how much the new input is weighted against the decay from a
 
 # sin parameters set to 10 more non-linearity
-c     = 1                # measurement scaling, analogous to H in linear KF (scales non-linearity term inside the sin)
+c     = 2                # measurement scaling, analogous to H in linear KF (scales non-linearity term inside the sin)
 
 phi_f = 0.0               # phase offset in process function f (set to 0 initially)
 phi_h = 0.0              # phase offset in measurement function h (set to 0 initially)
@@ -278,43 +278,6 @@ def run_simulation(sim_f, sim_h, label, uniform_noise=False):
                 inn_ukf=inn_ukf, inn_ekf=inn_ekf, inn_lkf=inn_lkf,
                 label=label)
  
-# ===============================
-# Run both LSim and NLSim
-# ===============================
-print("Running LSim (linear true system) ...")
-res_lsim = run_simulation(f_lin, h_lin, "LSim")
- 
-print("Running NLSim (nonlinear true system) ...")
-res_nlsim = run_simulation(f_nl, h_nl, "NLSim")
-
-# ===============================
-# Plot Results  (same as exercise 4, now with EKF added and both linear and non-linear data)
-# ===============================
-'''
-for res in [res_lsim, res_nlsim]:
-    plt.figure(figsize=(12, 8))
-    plt.suptitle(f"Exercise 5 --- UKF vs EKF vs LKF  [{res['label']}]")
- 
-    plt.subplot(3, 1, 1)
-    plt.plot(time, res['x_true'],        label='True state')
-    plt.plot(time, res['x_ukf'],  '--',  label='UKF estimate')
-    plt.plot(time, res['x_ekf'],  '-.',  label='EKF estimate')
-    plt.plot(time, res['x_lkf'],  ':',   label='LKF estimate')
-    plt.title('State estimate'); plt.legend(); plt.grid()
- 
-    plt.subplot(3, 1, 2)
-    plt.plot(time, res['z_meas'], label='Measurement $z_k$', alpha=0.5)
-    plt.title('Measurements'); plt.legend(); plt.grid()
- 
-    plt.subplot(3, 1, 3)
-    plt.plot(time, res['x_true'] - res['x_ukf'],        label='UKF error')
-    plt.plot(time, res['x_true'] - res['x_ekf'], '-.',  label='EKF error')
-    plt.plot(time, res['x_true'] - res['x_lkf'], '--',  label='LKF error')
-    plt.title('Estimation error'); plt.legend(); plt.grid()
- 
-    plt.tight_layout()
-    plt.savefig(f"/state_estimates_{res['label']}.png", dpi=150, bbox_inches='tight')
-''' 
 
 # ===============================
 # Validation tests
@@ -326,7 +289,10 @@ for res in [res_lsim, res_nlsim]:
 # if innovations are correlated the signal and noise are not yet orthogonal,
 # meaning the model is still missing structure it should have captured
 
-# here multiple tests are run for checking whiteness:
+
+# ==============================================================================
+# Whiteness test  ->  returns one row dict
+# ==============================================================================
 
 # ----- test 1: run test (sign changes) -- simplest whiteness check ----
 # counts how many times the innovation flips sign
@@ -343,225 +309,227 @@ for res in [res_lsim, res_nlsim]:
 # where the ACF plot gives a visual feel, portmanteau makes it a single statistical statement
 # takes the sum of squared ACF values across m lags: N * sum(rho^2(i)) ~ chi2(m)
 # if the statistic exceeds the chi2 critical value the null hypothesis of whiteness is rejected
+ 
+def whiteness_test(innovations, label, alpha=0.05):
+    e = innovations
+    N_e = len(e)
+ 
+    # ---- Run test (sign changes) ----
+    signs    = np.sign(e)
+    signs_nz = signs[signs != 0]                    # skip exact zeros
+    n_used   = len(signs_nz)
+    sc       = int(np.sum(np.diff(signs_nz) != 0))  # count sign changes
+    mu_sc    = (n_used - 1) / 2
+    mu_sc  = (n_used - 1) / 2                   # calculate mean
+    var_sc = (n_used - 1) / 4                   # calculate variance
+    std_sc = np.sqrt((n_used - 1) / 4)          # standard deviation
+    z_a      = norm.ppf(1 - alpha / 2)          # 1.96 for alpha=0.05 (95% confidence)
 
+    # set low,high boundaries expect to be within
+    # if fall within variance accept
+    low      = mu_sc - z_a * std_sc
+    high     = mu_sc + z_a * std_sc
+    run_pass = low < sc < high          # when does it pass
+ 
+    # ---- Portmanteau (Box-Pierce) ----
+    m   = min(20, N_e // 10)                                            # use either 20 or N/10
+    acf = np.array([                                                    # calculate the acf of each
+        np.corrcoef(e[:N_e - lag], e[lag:])[0, 1] if lag > 0 else 1.0
+        for lag in range(m + 1)
+    ])
+    conf   = z_a / np.sqrt(N_e)                                         # 95% confidence bounds for individual ACF values, rho_hat(k) ~ N(0, 1/N)
+    
+    # Large Q => many autocorrelations are collectively too large
+    Q_port = N_e * np.sum(acf[1:m + 1] ** 2)
+    # Critical value from chi-square distribution
+    # Reject H0 if Q exceeds this threshold
+    Q_crit = chi2.ppf(1 - alpha, df=m)
+    port_pass = Q_port <= Q_crit
+
+    # save result for table and plotting
+    return dict(label=label,
+                sc=sc, low=int(low), high=int(high), run_pass=run_pass,
+                Q_port=Q_port, Q_crit=Q_crit, port_pass=port_pass,
+                acf=acf, conf=conf, m=m)
+ 
+# ==============================================================================
+# Normality test  ->  appends W, p, pass to existing row dict
+# ==============================================================================
 
 # ------ test 4: normal probability plot -- check if innovations are Gaussian -------
 # if the filter model is correct and noise is Gaussian, innovations should also be Gaussian
 # LKF cannot handle nonlinearity so innovations get skewed away from Gaussian
 # EKF partially corrects this via linearisation (Jacobian), 
 
-# tested visually by plotting sample quantiles against theoretical normal quantiles (normplot)
-# if innovations are Gaussian the points fall on a straight line
-# confirmed statistically by Shapiro-Wilk: W close to 1 and p > 0.05 means Gaussian
- 
-def whiteness_and_normality_tests(innovations, label, alpha=0.05):
+
+def normality_test(innovations, row, alpha=0.05):       # simple test if normal using shapiro, same as from matlab with normplot
     e = innovations
-    N = len(e)
+    stat_sw, p_sw = shapiro(e[:min(5000, len(e))])
+    row['W']         = stat_sw                          # how much look like guassian
+    row['p_sw']      = p_sw                             # probality of observing this given it is perfect guassian dataset with this number of samples
+    row['norm_pass'] = p_sw > alpha                     # accept if 95% confident interval
+    return row
  
-    print(f"\n{'='*55}")
-    print(f"  Validation: {label}")
-    print(f"{'='*55}")
+# ==============================================================================
+# Table printer Simply to give overview of results
+# ==============================================================================
  
-    # --------------------------------------------------
-    # Test 1: Run test (sign changes)
-    # if innovations are white noise, sign changes follow
-    # B(N-1, 0.5) ~ N( (N-1)/2 , (N-1)/4 )
-    # --------------------------------------------------
-    signs    = np.sign(e)
-    signs_nz = signs[signs != 0]                # skip exact zeros
-    n_used   = len(signs_nz)
-    sc       = np.sum(np.diff(signs_nz) != 0)   # count sign changes
-    
-    mu_sc  = (n_used - 1) / 2                   # calculate mean
-    var_sc = (n_used - 1) / 4                   # calculate variance
+def print_table(rows):
+    # Header
+    sep = "-" * 100
+    print(sep)
+    print(f"{'Combination':<22} | {'Sign chg':>8} {'Range':>14} {'Run':>6} | "
+          f"{'Q':>8} {'Qcrit':>7} {'Port':>6} | "
+          f"{'W':>7} {'p':>8} {'Norm':>6}")
+    print(sep)
+    for r in rows:
+        run_str  = "PASS" if r['run_pass']  else "FAIL"
+        port_str = "PASS" if r['port_pass'] else "FAIL"
+        # Normality columns only if computed
+        if 'W' in r:
+            norm_str = "PASS" if r['norm_pass'] else "FAIL"
+            norm_col = f"{r['W']:>7.4f} {r['p_sw']:>8.4f} {norm_str:>6}"
+        else:
+            norm_col = f"{'---':>7} {'---':>8} {'---':>6}"
+        print(f"{r['label']:<22} | {r['sc']:>8} [{r['low']:>4},{r['high']:>4}] {run_str:>6} | "
+              f"{r['Q_port']:>8.2f} {r['Q_crit']:>7.2f} {port_str:>6} | "
+              f"{norm_col}")
+    print(sep)
 
-    std_sc = np.sqrt((n_used - 1) / 4)          # standard deviation
-    z_alpha = norm.ppf(1 - alpha/2)   # 1.96 for alpha=0.05 (95% confidence)
-    # set low,high boundaries expect to be within
-    # if fall within variance accept
-    low_bound= mu_sc - z_alpha * std_sc
-    high_bound= mu_sc + z_alpha * std_sc
-    print(f"\n[Run Test]")
-    print(f"  Sign changes : {sc}   (expected {mu_sc:.0f}, lower,upper bounds [{low_bound:.0f}, {high_bound:.0f}])")
-    if sc > low_bound and sc < high_bound:
-        print("PASS (white)")
-    else: 
-        print("FAIL (not white)")
- 
-    # --------------------------------------------------
-    # Test 2 + 3: ACF plot + Portmanteau test
-    # rho_hat(k) ~ N(0, 1/N) for individual lags
-    # N * sum(rho_hat(i)^2) ~ chi2(m)  for joint test
-    # m chosen between 15-25 but < N/10
-    # --------------------------------------------------
-    m   = min(20, N // 10)          # use either 20 or N/10 from slides
-    acf = np.array([
-        np.corrcoef(e[:N-lag], e[lag:])[0, 1] if lag > 0 else 1.0
-        for lag in range(m + 1)
-    ])                              # calculate the acf of each
-    
-    # 95% confidence bounds for individual ACF values
-    # rho_hat(k) ~ N(0, 1/N)
-    conf = z_alpha / np.sqrt(N)    
 
-    # Box-Pierce Portmanteau statistic
-    # Large Q => many autocorrelations are collectively too large
-    Q_port = N * np.sum(acf[1:m+1]**2)
+# ==============================================================================
+# 8. Run Gaussian simulations
+# ==============================================================================
+print("\nRunning LSim  (linear true system, Gaussian noise) ...")
+res_lsim  = run_simulation(f_lin, h_lin, "LSim")
+ 
+print("Running NLSim (nonlinear true system, Gaussian noise) ...")
+res_nlsim = run_simulation(f_nl,  h_nl,  "NLSim")
+ 
+# Tables over results
 
-    # Critical value from chi-square distribution
-    # Reject H0 if Q exceeds this threshold
-    Q_crit = chi2.ppf(1 - alpha, df=m)
+# ---- Whiteness and guassian tests table ----
+print("\n\n=== Tasks 1 & 2: Whiteness + Normality (Gaussian noise) ===")
+rows_gauss = []
+for res in [res_lsim, res_nlsim]:
+    for flabel, inn_key in [("LKF", "inn_lkf"), ("EKF", "inn_ekf")]:
+        combo = f"{res['label']} + {flabel}"
+        row   = whiteness_test(res[inn_key], combo)
+        normality_test(res[inn_key], row)
+        rows_gauss.append(row)
+print_table(rows_gauss) 
  
-    print(f"\n[Portmanteau Test]  m = {m} lags")
-    # if Q < critical value -> white noise hypothesis holds -> PASS
-    print(f"  Q = {Q_port:.3f},  chi2({m}) critical = {Q_crit:.3f}")
-    if Q_port > Q_crit:
-        print("FAIL: Reject H0 -> residuals are NOT white")
-    else:
-        print("PASS: Cannot reject H0 -> residuals are consistent with white noise")
-     
-    # --------------------------------------------------
-    # Test 4: Normal probability plot
-    # if innovations are Gaussian they fall on a straight line
-    # Shapiro-Wilk p-value confirms statistically
-    # --------------------------------------------------
-
-    # W is how close to a straight line the normal prob plot is (1.0 = perfect normal)
-    # p > 0.05 means we cannot reject normality -> PASS
-
-    stat_sw, p_sw = shapiro(e[:min(5000, N)]) 
-    print(f"\n[Normality - Shapiro-Wilk]")
-    print(f"  W = {stat_sw:.4f},  p = {p_sw:.4f}  ->  {'PASS (normal)' if p_sw > alpha else 'FAIL (not normal)'}")
- 
-    return acf,conf, m, Q_port, Q_crit, stat_sw, p_sw
- 
-# ===============================
-# Validation plots  (one figure per sim, 3 filters x 2 columns)
-# ===============================
- 
+# ---- Plots: ACF + normal prob (Gaussian) ----
 for res in [res_lsim, res_nlsim]:
     sim_label = res['label']
  
-    # collect results for all three filters
-    val_results = {}
-    for flabel, inn in [("LKF", res['inn_lkf']), ("EKF", res['inn_ekf'])]:
-        full_label = f"{sim_label} + {flabel}"
-        acf, conf, m, Q_port, Q_crit, stat_sw, p_sw= whiteness_and_normality_tests(inn, full_label)
-        val_results[full_label] = (inn, acf, conf, m,Q_port, Q_crit, stat_sw, p_sw)
+    # ACF + normal prob plots
+    fig2, axes2 = plt.subplots(2, 2, figsize=(13, 12))
+    fig2.suptitle(f"Validation — Innovations [{sim_label}] — Gaussian noise", fontsize=13)
  
-    fig, axes = plt.subplots(2, 2, figsize=(13, 11))
-    fig.suptitle(f"Model Validation — Innovations Analysis  [{sim_label}]", fontsize=13)
+    sim_idx = 0 if res['label'] == 'LSim' else 1
+    for row_idx, (flabel, inn_key) in enumerate([("LKF","inn_lkf"),("EKF","inn_ekf")]):
+        e    = res[inn_key]
+        r    = rows_gauss[sim_idx * 2 + row_idx]
+        N_e  = len(e)
  
-    for row, (full_label, (inn, acf, conf, m, Q_port, Q_crit, stat_sw, p_sw)) in enumerate(val_results.items()):
-        e = inn
-        N_e = len(e)
- 
-        # ---- Left column: ACF plot ----
-        ax_acf = axes[row, 0]
-        lags   = np.arange(1, m + 1)
-        ax_acf.bar(lags, acf[1:m+1], color='steelblue', alpha=0.7)
-        ax_acf.axhline( conf, color='red', linestyle='--', linewidth=1.2, label=f'95% CI (+-{conf:.3f})')
-        ax_acf.axhline(-conf, color='red', linestyle='--', linewidth=1.2)
-        ax_acf.plot([], [], ' ', label=f"Q = {Q_port:.3f}")
-        ax_acf.plot([], [], ' ', label=f"Qcrit = {Q_crit:.3f}")
-        ax_acf.axhline(0, color='black', linewidth=0.8)
-        ax_acf.set_title(f'ACF of innovations — {full_label}', fontsize=10)
+        # ACF
+        ax_acf = axes2[row_idx, 0]
+        lags   = np.arange(1, r['m'] + 1)
+        ax_acf.bar(lags, r['acf'][1:r['m']+1], color='steelblue', alpha=0.7)
+        ax_acf.axhline( r['conf'], color='red', linestyle='--', lw=1.2,
+                        label=f"95% CI (±{r['conf']:.3f})")
+        ax_acf.axhline(-r['conf'], color='red', linestyle='--', lw=1.2)
+        ax_acf.axhline(0, color='black', lw=0.8)
+        ax_acf.plot([], [], ' ', label=f"Q={r['Q_port']:.2f}, Qcrit={r['Q_crit']:.2f}")
+        ax_acf.set_title(f'ACF — {flabel}  [{"PASS" if r["port_pass"] else "FAIL"}]')
         ax_acf.set_xlabel('Lag'); ax_acf.set_ylabel('Correlation')
-        ax_acf.legend(fontsize=8); ax_acf.set_ylim(-0.15, 0.15); ax_acf.grid(True, alpha=0.4)
+        ax_acf.set_ylim(-0.15, 0.15); ax_acf.legend(fontsize=8); ax_acf.grid(alpha=0.4)
  
-        # ---- Right column: Normal probability plot ----
-        ax_norm = axes[row, 1]
+        # Normal prob plot
+        ax_norm = axes2[row_idx, 1]
         e_s  = np.sort(e)
-        p    = (np.arange(1, N_e + 1) - 0.375) / (N_e + 0.25)   # Blom formula for plotting positions
-        z_th = norm.ppf(p)                                          # theoretical normal quantiles
- 
+        p_   = (np.arange(1, N_e + 1) - 0.375) / (N_e + 0.25)
+        z_th = norm.ppf(p_)
         ax_norm.scatter(z_th, e_s, s=2, color='steelblue', alpha=0.5, label='Residuals')
- 
-        # reference line through the 25th-75th percentile range
-        q25, q75  = np.percentile(e_s, [25, 75])
-        z25, z75  = norm.ppf([0.25, 0.75])
-        slope     = (q75 - q25) / (z75 - z25)
+        q25, q75 = np.percentile(e_s, [25, 75])
+        z25, z75 = norm.ppf([0.25, 0.75])
+        slope    = (q75 - q25) / (z75 - z25)
         intercept = q25 - slope * z25
-        x_line    = np.array([z_th[0], z_th[-1]])
-        ax_norm.plot(x_line, slope * x_line + intercept, 'r-', linewidth=1.5, label='Normal ref line')
-        ax_norm.plot([], [], ' ', label=f"W = {stat_sw:.4f}")
-        ax_norm.plot([], [], ' ', label=f"p = {p_sw:.4f}")
- 
-        _, p_sw = shapiro(e_s[:min(5000, N_e)])
-        ax_norm.set_title(f'Normal prob plot — {full_label}  (SW p={p_sw:.4f})', fontsize=10)
+        x_line   = np.array([z_th[0], z_th[-1]])
+        ax_norm.plot(x_line, slope * x_line + intercept, 'r-', lw=1.5, label='Normal ref')
+        ax_norm.plot([], [], ' ', label=f"W={r['W']:.4f},  p={r['p_sw']:.4f}")
+        ax_norm.set_title(f'Normal prob — {flabel}  [{"PASS" if r["norm_pass"] else "FAIL"}]')
         ax_norm.set_xlabel('Theoretical quantiles'); ax_norm.set_ylabel('Sample quantiles')
-        ax_norm.legend(fontsize=8); ax_norm.grid(True, alpha=0.4)
+        ax_norm.legend(fontsize=8); ax_norm.grid(alpha=0.4)
  
     plt.tight_layout()
-    os.makedirs("results", exist_ok=True)
-    plt.savefig(f"results/validation_{sim_label}_N_{N}.png", dpi=150, bbox_inches='tight')
  
-# =================================
-# Exercise make process nad measurement noise uniform
-# ==============================
+plt.show()   # blocks until all Gaussian plots are closed
+ 
+# ==============================================================================
+# 9. Run Uniform simulations
+# ==============================================================================
+print("\n\nRunning LSim  (linear true system, Uniform noise) ...")
+res_lsim_uni  = run_simulation(f_lin, h_lin, "LSim Uniform",  uniform_noise=True)
+ 
+print("Running NLSim (nonlinear true system, Uniform noise) ...")
+res_nlsim_uni = run_simulation(f_nl,  h_nl,  "NLSim Uniform", uniform_noise=True)
+ 
+print("\n\n=== Task 3: Whiteness + Normality (Uniform noise) ===")
+rows_uni = []
+for res in [res_lsim_uni, res_nlsim_uni]:
+    for flabel, inn_key in [("LKF", "inn_lkf"), ("EKF", "inn_ekf")]:
+        combo = f"{res['label']} + {flabel}"
+        row   = whiteness_test(res[inn_key], combo)
+        normality_test(res[inn_key], row)
+        rows_uni.append(row)
+ 
+print_table(rows_uni)
 
-print("Running LSim with uniform noise ...")
-res_lsim_uni = run_simulation(f_lin, h_lin, "LSim_Uniform", uniform_noise=True)
-
-print("Running NLSim with uniform noise ...")
-res_nlsim_uni = run_simulation(f_nl, h_nl, "NLSim_Uniform", uniform_noise=True)
-
+# ---- Plots: ACF + normal prob (Uniform) ----
 for res in [res_lsim_uni, res_nlsim_uni]:
     sim_label = res['label']
+    fig, axes = plt.subplots(2, 2, figsize=(13, 12))
+    fig.suptitle(f"Validation — Innovations [{sim_label}] — Uniform noise", fontsize=13)
  
-    # collect results for all three filters
-    val_results = {}
-    for flabel, inn in [("LKF", res['inn_lkf']), ("EKF", res['inn_ekf'])]:
-        full_label = f"{sim_label} + {flabel}"
-        acf, conf, m, Q_port, Q_crit, stat_sw, p_sw= whiteness_and_normality_tests(inn, full_label)
-        val_results[full_label] = (inn, acf, conf, m,Q_port, Q_crit, stat_sw, p_sw)
- 
-    fig, axes = plt.subplots(2, 2, figsize=(13, 11))
-    fig.suptitle(f"Model Validation — Innovations Analysis  [{sim_label}]", fontsize=13)
- 
-    for row, (full_label, (inn, acf, conf, m, Q_port, Q_crit, stat_sw, p_sw)) in enumerate(val_results.items()):
-        e = inn
+    for row_idx, (flabel, inn_key) in enumerate([("LKF","inn_lkf"),("EKF","inn_ekf")]):
+        e   = res[inn_key]
+        uni_idx = 0 if res['label'] == 'LSim Uniform' else 1
+        r   = rows_uni[uni_idx * 2 + row_idx]
         N_e = len(e)
  
-        # ---- Left column: ACF plot ----
-        ax_acf = axes[row, 0]
-        lags   = np.arange(1, m + 1)
-        ax_acf.bar(lags, acf[1:m+1], color='steelblue', alpha=0.7)
-        ax_acf.axhline( conf, color='red', linestyle='--', linewidth=1.2, label=f'95% CI (+-{conf:.3f})')
-        ax_acf.axhline(-conf, color='red', linestyle='--', linewidth=1.2)
-        ax_acf.plot([], [], ' ', label=f"Q = {Q_port:.3f}")
-        ax_acf.plot([], [], ' ', label=f"Qcrit = {Q_crit:.3f}")
-        ax_acf.axhline(0, color='black', linewidth=0.8)
-        ax_acf.set_title(f'ACF of innovations — {full_label}', fontsize=10)
+        ax_acf = axes[row_idx, 0]
+        lags   = np.arange(1, r['m'] + 1)
+        ax_acf.bar(lags, r['acf'][1:r['m']+1], color='darkorange', alpha=0.7)
+        ax_acf.axhline( r['conf'], color='red', linestyle='--', lw=1.2,
+                        label=f"95% CI (±{r['conf']:.3f})")
+        ax_acf.axhline(-r['conf'], color='red', linestyle='--', lw=1.2)
+        ax_acf.axhline(0, color='black', lw=0.8)
+        ax_acf.plot([], [], ' ', label=f"Q={r['Q_port']:.2f}, Qcrit={r['Q_crit']:.2f}")
+        ax_acf.set_title(f'ACF — {flabel}  [{"PASS" if r["port_pass"] else "FAIL"}]')
         ax_acf.set_xlabel('Lag'); ax_acf.set_ylabel('Correlation')
-        ax_acf.legend(fontsize=8); ax_acf.set_ylim(-0.15, 0.15); ax_acf.grid(True, alpha=0.4)
+        ax_acf.set_ylim(-0.15, 0.15); ax_acf.legend(fontsize=8); ax_acf.grid(alpha=0.4)
  
-        # ---- Right column: Normal probability plot ----
-        ax_norm = axes[row, 1]
+        ax_norm = axes[row_idx, 1]
         e_s  = np.sort(e)
-        p    = (np.arange(1, N_e + 1) - 0.375) / (N_e + 0.25)   # Blom formula for plotting positions
-        z_th = norm.ppf(p)                                          # theoretical normal quantiles
- 
-        ax_norm.scatter(z_th, e_s, s=2, color='steelblue', alpha=0.5, label='Residuals')
- 
-        # reference line through the 25th-75th percentile range
-        q25, q75  = np.percentile(e_s, [25, 75])
-        z25, z75  = norm.ppf([0.25, 0.75])
+        p_   = (np.arange(1, N_e + 1) - 0.375) / (N_e + 0.25)
+        z_th = norm.ppf(p_)
+        ax_norm.scatter(z_th, e_s, s=2, color='darkorange', alpha=0.5, label='Residuals')
+        q25, q75 = np.percentile(e_s, [25, 75])
+        z25, z75 = norm.ppf([0.25, 0.75])
         slope     = (q75 - q25) / (z75 - z25)
         intercept = q25 - slope * z25
         x_line    = np.array([z_th[0], z_th[-1]])
-        ax_norm.plot(x_line, slope * x_line + intercept, 'r-', linewidth=1.5, label='Normal ref line')
-        ax_norm.plot([], [], ' ', label=f"W = {stat_sw:.4f}")
-        ax_norm.plot([], [], ' ', label=f"p = {p_sw:.4f}")
- 
-        _, p_sw = shapiro(e_s[:min(5000, N_e)])
-        ax_norm.set_title(f'Normal prob plot — {full_label}  (SW p={p_sw:.4f})', fontsize=10)
+        ax_norm.plot(x_line, slope * x_line + intercept, 'r-', lw=1.5, label='Normal ref')
+        ax_norm.plot([], [], ' ', label=f"W={r['W']:.4f},  p={r['p_sw']:.4f}")
+        ax_norm.set_title(f'Normal prob — {flabel}  [{"PASS" if r["norm_pass"] else "FAIL"}]')
         ax_norm.set_xlabel('Theoretical quantiles'); ax_norm.set_ylabel('Sample quantiles')
-        ax_norm.legend(fontsize=8); ax_norm.grid(True, alpha=0.4)
+        ax_norm.legend(fontsize=8); ax_norm.grid(alpha=0.4)
  
     plt.tight_layout()
-    os.makedirs("results", exist_ok=True)
-    plt.savefig(f"results/validation_uniform_{sim_label}_N_{N}.png", dpi=150, bbox_inches='tight')
+ 
+plt.show()   # blocks until all Uniform plots are closed
 
 
 # ===============================
@@ -610,7 +578,7 @@ for k in range(N - 1):
     x_aug_hist[k + 1] = xh_aug          # save estimates
 
 print("="*50)
-print("Final results of a estimation, how the new state x dependes on old xk-1")
+print("Final results of a estimation")
 print("="*50)
 print(f"  True a          = {a}")
 print(f"  Estimated a     = {x_aug_hist[-1, 1]:.4f}")

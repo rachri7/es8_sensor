@@ -47,7 +47,7 @@ def h_nl(x):        #non-linear measurement function
 # ===============================
 # linear approximation: removes phase offsets (phi_f = phi_h = 0)
 # and replaces sin(x) with x, removes non-linearity no sin
-# IDK maybe keep in here (valid for small x)
+# (valid for small x)
 
 #linear transition function (a * x + b_p * u)   #found in the lkf_step
 #linear measuremt function (c * x)              #found in the lkf_step
@@ -63,16 +63,12 @@ C_lin = np.array([[c]])
 
 def ukf_step(x_hat, P, z, u, f, h, Q, R):
     n = len(x_hat)      # state dimension
-    lam = 1.0           # scaling: how far sigma points spread from mean
+    # parameter from slide decide how far 
+    K_ukf = 2
+    alpha = 1
+    beta = 0
+    lam = alpha**2 * (n + K_ukf) - n          # scaling: how far sigma points spread from mean
     n_sig = 2 * n + 1   # total sigma points
-
-    # weights for non-center sigma points (equal weight)
-    Wm = np.full(n_sig, 1 / (2*(n + lam)))     # contribution to mean
-    Wc = np.full(n_sig, 1 / (2*(n + lam)))     # contribution to covariance
-    # center point gets higher weight (closest to current estimate)
-    Wm[0] = lam / (n + lam)
-    Wc[0] = lam / (n + lam) + (1 - 1.0**2 + 2.0)  # + (1 - alpha^2 + beta)
-    # all weights sum to 1
 
     # --- sigma points via eigendecomposition of P (passed in from previous step) ---
     # eigvals: variance magnitude in each direction
@@ -87,6 +83,14 @@ def ukf_step(x_hat, P, z, u, f, h, Q, R):
     for i in range(n):
         sigma_pts[:, i+1]   = x_hat + S[:, i]
         sigma_pts[:, i+1+n] = x_hat - S[:, i]
+
+    # weights for non-center sigma points (equal weight)
+    Wm = np.full(n_sig, 1 / (2*(n + lam)))     # contribution to mean
+    Wc = np.full(n_sig, 1 / (2*(n + lam)))     # contribution to covariance
+    # center point gets higher weight (closest to current estimate)
+    Wm[0] = lam / (n + lam)
+    Wc[0] = lam / (n + lam) + (1 - alpha**2 + beta)  # + (1 - alpha^2 + beta)
+    # all weights sum to 1
 
     # --- prediction ---
 

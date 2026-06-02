@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+np.random.seed(4)
 # ===============================
 # Parameters
 # ===============================
@@ -20,40 +21,40 @@ time = np.arange(N) * Ts
 # TRUE SYSTEM (3 states)
 # ===============================
 
-Phi_true = np.array([
+Phi_true = np.array([           # true state transition model
     [1, Ts, 0],
     [0, 1,  Ts],
     [0, 0,  0]
 ])
 
-Gamma = np.array([[0],
+Gamma = np.array([[0],          # map input to state space
                   [0],
                   [1]])
 
-H_true = np.array([[0, 0, 1]])
+H_true = np.array([[0, 0, 1]])      # measurement matrix
 
 # ===============================
 # KALMAN FILTER (4 states)
 # ===============================
 
-Phi_kf = np.array([
-    [1, Ts, 0, 0],
-    [0, 1,  Ts, 0],
-    [0, 0,  phi, 0],
-    [0, 0,  0, 1]
+Phi_kf = np.array([                                 # state transistion with bias
+    [1, Ts, 0, 0],                                  # position kinematics
+    [0, 1,  Ts, 0],                                 # velocity kinematics
+    [0, 0,  phi, 0],                                # acceleration AR(1)
+    [0, 0,  0, 1]                                   # bais random walk
 ])
 
-Q = np.diag([0, 0, sigma_wa**2, sigma_wb**2])
-H_kf = np.array([[0, 0, 1, 1]])
-R = np.array([[sigma_v**2]])
+Q = np.diag([0, 0, sigma_wa**2, sigma_wb**2])       # process noise
+H_kf = np.array([[0, 0, 1, 1]])                        # measurement matrix
+R = np.array([[sigma_v**2]])                        # measurment noise
 
 # ===============================
 # Storage
 # ===============================
 
-x_true = np.zeros((3, N))
-x_hat  = np.zeros((4, N))
-P = np.eye(4)
+x_true = np.zeros((3, N))       # all true, position, velocity and acceleraton
+x_hat  = np.zeros((4, N))       # estimate kalman position, velocity, acceleraton and bias
+P = np.eye(4)                   # intial uncertianty covariance (identity)
 
 # bias
 b = b_true
@@ -62,7 +63,7 @@ b = b_true
 w1 = 2*np.pi*0.1      # 1 Hz
 w2 = 2*np.pi*1      # 5 Hz
 
-a_input = np.sin(w1*time) + 0.7*np.sin(w2*time)
+a_input = np.sin(w1*time) + 0.7*np.sin(w2*time)     # determinstic input (known)
 
 # ===============================
 # Simulation + KF
@@ -96,7 +97,8 @@ for k in range(N-1):
 
     # update for state and covariance
     x_hat[:,k+1] = x_pred + (K @ innovation).flatten()  
-    P = (np.eye(4) - K @ H_kf) @ P_pred                 #joseph form
+    I = np.eye(4)
+    P = (I - K @ H_kf) @ P_pred @ (I - K @ H_kf).T + K @ R @ K.T      #joseph form                   
 
 
 # ===============================
