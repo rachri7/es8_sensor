@@ -16,12 +16,8 @@ sigma_alpha  = np.deg2rad(1) # angle noise std [rad]
 # ===============================
 
 def check_circle_intersection(angle, lidar_pos, robot_pos, robot_radius):
-    """
-    Check if a ray from lidar_pos at given angle hits
-    cylindrical robot at robot_pos with robot_radius.
-    Returns hit point (x,y) or None.
-    """
-    # ray direction unit vector from angle
+
+    # ray direction vector from angle
     dx = np.cos(angle)
     dy = np.sin(angle)
 
@@ -48,13 +44,8 @@ def check_circle_intersection(angle, lidar_pos, robot_pos, robot_radius):
     return (x_hit, y_hit)
 
 def check_wall_intersection(angle, lidar_pos, wall_start, wall_end):
-    """
-    Check if a ray from lidar_pos at given angle hits a wall segment
-    defined from wall_start to wall_end.
-    Returns hit point in Cartesian (x,y) or None.
-    """
 
-    # ray direction unit vector from angle
+    # ray direction vector from angle
     dx = np.cos(angle)
     dy = np.sin(angle)
 
@@ -90,11 +81,8 @@ def check_wall_intersection(angle, lidar_pos, wall_start, wall_end):
     return (x_hit, y_hit)
 
 def add_noise(x_hit, y_hit, lidar_pos):
-    """
-    Add noise in polar domain (range + angle) then convert back to Cartesian.
-    nu_d ~ N(0, sigma_d^2), nu_alpha ~ N(0, sigma_alpha^2)
-    """
-    # vector from lidar to hit point
+
+    # vector from lidar to hit point (distance)
     dx = x_hit - lidar_pos[0]
     dy = y_hit - lidar_pos[1]
 
@@ -103,8 +91,8 @@ def add_noise(x_hit, y_hit, lidar_pos):
     alpha_true = np.arctan2(dy, dx)      # true bearing: angle of hit from lidar
 
     # add independent Gaussian noise to range and angle (sensor noise model)
-    d_noisy     = d_true     + np.random.normal(0, sigma_d)      # ~5 cm range noise
-    alpha_noisy = alpha_true + np.random.normal(0, sigma_alpha)  # ~1 deg angle noise
+    d_noisy     = d_true     + np.random.normal(0, sigma_d)      
+    alpha_noisy = alpha_true + np.random.normal(0, sigma_alpha)  
 
     # convert noisy polar back to Cartesian:
     x_noisy = lidar_pos[0] + d_noisy * np.cos(alpha_noisy)
@@ -219,6 +207,9 @@ a_f, b_f, c_f = result.x
 y_plot = np.array([y_w.min(), y_w.max()])
 x_plot = -(b_f*y_plot + c_f) / a_f
 
+print(f"Fitted line: {a_f:.4f}x + {b_f:.4f}y + {c_f:.4f} = 0")
+print(f"True wall at x = {wall_start[0]}")
+
 fig, ax = plt.subplots(figsize=(8, 7))
 ax.add_patch(patches.Circle((robot_pos2), robot_radius, color='steelblue',
              fill=False, lw=2, label='Cylindrical robot'))
@@ -237,5 +228,3 @@ ax.set_title('Exercise 6 --- Wall cluster + line fitting')
 plt.tight_layout()
 plt.show()
 
-print(f"Fitted line: {a_f:.4f}x + {b_f:.4f}y + {c_f:.4f} = 0")
-print(f"True wall at x = {wall_start[0]}")
