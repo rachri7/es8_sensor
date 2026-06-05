@@ -1,0 +1,32 @@
+%  A simple AAU report template.
+%
+\input{setup/preamble.tex}% package inclusion and set up of the document
+\input{setup/hyphenations.tex}% 
+\input{setup/macros.tex}% my new macros
+
+\begin{document}
+%frontmatter
+\pagestyle{empty} %disable headers and footers
+\pagenumbering{roman} %use roman page numbering in the frontmatter
+%\input{sections/00formaliaBS/1.frontpage}
+%\input{sections/00formaliaBS/2.titlepage} 
+\cleardoublepage
+\pdfbookmark[0]{Contents}{label:contents}
+\pagestyle{fancy} %enable headers and footers again
+{\large\tableofcontents}
+%\input{sections/00formaliaBS/4.preface} 
+\cleardoublepage
+
+\printnomenclature
+
+\cleardoublepage
+%mainmatter
+\pagenumbering{arabic} %use arabic page numbering in the mainmatter
+
+%\input{sections/00formaliaBS/1.frontpage}
+%\input{sections/00formaliaBS/5.Introduction} 
+\input{sections/Lectures/index}
+
+\printbibliography
+\printglossaries
+\end{document}

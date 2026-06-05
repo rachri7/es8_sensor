@@ -1,0 +1,323 @@
+%  A simple AAU report template.
+\documentclass[11pt,oneside,a4paper,openright]{report}
+\usepackage{wrapfig}
+\usepackage{subcaption}
+\usepackage[inline]{enumitem}
+\usepackage[export]{adjustbox}
+\usepackage{graphicx}
+\usepackage{rotating}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{pdfpages}
+\usepackage{colortbl}
+\usepackage{gensymb}
+\usepackage{mathrsfs}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{hyperref}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{parskip}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage[most]{tcolorbox}
+% --- Summary box ---
+\newmdenv[
+  backgroundcolor=aaublue!8,
+  linecolor=aaublue,
+  linewidth=1.5pt,
+  roundcorner=4pt,
+  innerleftmargin=12pt,
+  innerrightmargin=12pt,
+  innertopmargin=10pt,
+  innerbottommargin=10pt,
+  skipabove=10pt,
+  skipbelow=10pt
+]{summarybox}
+
+\newtcolorbox{keybox}{
+    colback=green!5!white,
+    colframe=green!50!black,
+    fonttitle=\bfseries,
+    title=Key Takeaway,
+    rounded corners,
+    left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+ 
+% --- Note box ---
+\newmdenv[
+  backgroundcolor=lightgray,
+  linecolor=accentgray,
+  linewidth=1pt,
+  roundcorner=4pt,
+  innerleftmargin=12pt,
+  innerrightmargin=12pt,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+  skipabove=8pt,
+  skipbelow=8pt
+]{notebox}
+
+% --- Warning / key result box ---
+\newmdenv[
+  backgroundcolor=warnred!8,
+  linecolor=warnred,
+  linewidth=1.5pt,
+  roundcorner=4pt,
+  innerleftmargin=12pt,
+  innerrightmargin=12pt,
+  innertopmargin=10pt,
+  innerbottommargin=10pt,
+  skipabove=10pt,
+  skipbelow=10pt
+]{warnbox}
+ 
+% --- Green result box ---
+\newmdenv[
+  backgroundcolor=greenbox,
+  linecolor=greenborder,
+  linewidth=1.2pt,
+  roundcorner=4pt,
+  innerleftmargin=12pt,
+  innerrightmargin=12pt,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+  skipabove=8pt,
+  skipbelow=8pt
+]{resultbox}
+% Insight box
+\newmdenv[
+  backgroundcolor=lightgray,
+  linecolor=aaublue,
+  linewidth=1.5pt,
+  leftline=true, rightline=false, topline=false, bottomline=false,
+  innerleftmargin=10pt,
+  innerrightmargin=10pt,
+  innertopmargin=6pt,
+  innerbottommargin=6pt,
+]{insightbox}
+
+\usepackage{listings}
+
+\definecolor{aaublue}{RGB}{33, 83, 130}
+\definecolor{lightgray}{RGB}{245, 245, 245}
+
+\titleformat{\section}{\large\bfseries\color{aaublue}}{}{0em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{}
+
+\hypersetup{colorlinks=true, linkcolor=aaublue, urlcolor=aaublue}
+
+\title{\textbf{Networks and Systems -- MM1}\\
+\large Topic 1: System Definitions and Examples\\[0.5em]
+\normalsize Lecture Notes Summary}
+\author{Based on lectures by Hans-Peter Schwefel}
+\date{AAU, February 2025}
+
+
+\newcommand{\mhat}{\hat{m}}
+\newcommand{\eps}{\epsilon}
+% --- Colour definitions ---
+\definecolor{aaublue}{RGB}{33, 87, 152}
+\definecolor{lightgray}{RGB}{245, 245, 245}
+\definecolor{accentgray}{RGB}{100, 100, 100}
+\definecolor{warnred}{RGB}{180, 40, 40}
+\definecolor{greenbox}{RGB}{230, 245, 230}
+\definecolor{greenborder}{RGB}{60, 140, 60}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Language, Encoding and Fonts
+% http://en.wikibooks.org/wiki/LaTeX/Internationalization
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Select encoding of your inputs. Depends on
+% your operating system and its default input
+% encoding. Typically, you should use
+%   Linux  : utf8 (most modern Linux distributions)
+%            latin1 
+%   Windows: ansinew
+%            latin1 (works in most cases)
+%   Mac    : applemac
+% Notice that you can manually change the input
+% encoding of your files by selecting "save as"
+% an select the desired input encoding. 
+\usepackage[utf8]{inputenc}
+% Make latex understand and use the typographic
+% rules of the language used in the document.
+\usepackage[english]{babel}
+% Use the palatino font
+\usepackage[sc]{mathpazo}
+\linespread{1.05}         % Palatino needs more leading (space between lines)
+% Choose the font encoding
+\usepackage[T1]{fontenc}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Graphics and Tables
+% http://en.wikibooks.org/wiki/LaTeX/Importing_Graphics
+% http://en.wikibooks.org/wiki/LaTeX/Tables
+% http://en.wikibooks.org/wiki/LaTeX/Colors
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% load a colour package
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{xcolor}
+\definecolor{aaublue}{RGB}{33,26,82}% dark blue
+% The standard graphics inclusion package
+\usepackage{graphicx}
+% Set up how figure and table captions are displayed
+\usepackage{caption}
+\captionsetup{%
+  font=footnotesize,% set font size to footnotesize
+  labelfont=bf % bold label (e.g., Figure 3.2) font
+}
+% Make the standard latex tables look so much better
+\usepackage{array,booktabs}
+% Enable the use of frames around, e.g., theorems
+% The framed package is used in the example environment
+\usepackage{framed}
+\usepackage{threeparttable}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Mathematics
+% http://en.wikibooks.org/wiki/LaTeX/Mathematics
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Defines new environments such as equation,
+% align and split 
+\usepackage{amsmath}
+% Adds new math symbols
+\usepackage{amssymb}
+% Use theorems in your document
+% The ntheorem package is also used for the example environment
+% When using thmmarks, amsmath must be an option as well. Otherwise \eqref doesn't work anymore.
+\usepackage[framed,amsmath,thmmarks]{ntheorem}
+%\usepackage[intoc, danish]{nomencl}
+%\makenomenclature
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Nomenclature
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{etoolbox}
+\usepackage{siunitx}
+\usepackage{ragged2e}
+\usepackage[intoc, danish]{nomencl}
+\makenomenclature
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Page Layout
+% http://en.wikibooks.org/wiki/LaTeX/Page_Layout
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Change margins, papersize, etc of the document
+\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+% Modify how \chapter, \section, etc. look
+% The titlesec package is very configureable
+\usepackage{titlesec, blindtext, color}
+\definecolor{gray75}{gray}{0.75}
+\newcommand{\hsp}{\hspace{20pt}}
+\titleformat{\chapter}[hang]{\Huge\bfseries}{\thechapter\hsp\textcolor{gray75}{|}\hsp}{0pt}{\Huge\bfseries}
+\titleformat*{\section}{\normalfont\Large\bfseries}
+\titleformat*{\subsection}{\normalfont\large\bfseries}
+\titleformat*{\subsubsection}{\normalfont\normalsize\bfseries}
+%\titleformat*{\paragraph}{\normalfont\normalsize\bfseries}
+%\titleformat*{\subparagraph}{\normalfont\normalsize\bfseries}
+
+% Clear empty pages between chapters
+\makeatletter
+\def\clearemptydoublepage{%
+  \clearpage
+  {\pagestyle{empty}\if@twoside\ifodd\c@page\else
+  \hbox{}\newpage
+  \if@twocolumn\hbox{}\newpage\fi\fi\fi}
+}
+\makeatother
+
+% Change the headers and footers
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{} %delete everything
+\rhead{\groupName}
+\lhead{\rightmark}
+\rfoot{Page \thepage\ of \pageref{LastPage}}
+\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\footrulewidth}{1pt}
+
+\fancypagestyle{plain}{%
+\fancyhf{}% clear all header and footer fields
+\rfoot{Page \thepage\ of \pageref{LastPage}} % except the center
+\renewcommand{\headrulewidth}{0pt}%
+\renewcommand{\footrulewidth}{1pt}
+}
+
+% Do not stretch the content of a page. Instead,
+% insert white space at the bottom of the page
+\raggedbottom
+% Enable arithmetics with length. Useful when
+% typesetting the layout.
+\usepackage{calc}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bibliography
+% http://en.wikibooks.org/wiki/LaTeX/Bibliography_Management
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[style=numeric-comp,backend=bibtex,bibencoding=utf8,sorting=none]{biblatex}
+\addbibresource{bib/references}
+%\usepackage{microtype}
+%\usepackage{breakcites}
+\usepackage{xurl}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Misc
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Add bibliography and index to the table of
+% contents
+\usepackage[nottoc]{tocbibind}
+% Add the command \pageref{LastPage} which refers to the
+% page number of the last page
+\usepackage{lastpage}
+% Add todo notes in the margin of the document
+\usepackage[
+%  disable, %turn off todonotes
+  colorinlistoftodos, %enable a coloured square in the list of todos
+  textwidth=\marginparwidth, %set the width of the todonotes
+  textsize=scriptsize, %size of the text in the todonotes
+  ]{todonotes}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Hyperlinks
+% http://en.wikibooks.org/wiki/LaTeX/Hyperlinks
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Enable hyperlinks and insert info into the pdf
+% file. Hypperref should be loaded as one of the 
+% last packages
+\usepackage{hyperref}
+\hypersetup{%
+    breaklinks=true,%
+	%pdfpagelabels=true,%
+	plainpages=false,%
+	pdfauthor={Author(s)},%
+	pdftitle={\TITLE},%
+	pdfsubject={\pdfSubject},%
+	bookmarksnumbered=true,%
+	colorlinks=false,%
+	citecolor= black,%
+	filecolor= black,%
+	linkcolor=black,% you should probably change this to black before printing
+	urlcolor=cyan,%
+	pdfstartview=FitH%
+}
+
+\usepackage{float}
+%\usepackage{indentfirst}
+\usepackage{svg}
+\usepackage{comment}
+
+\usepackage{glossaries}
+\makeglossaries
+\input{setup/glossarie.tex} 
+\input{setup/links}
+
+\setlength\parindent{0pt}

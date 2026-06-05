@@ -1,0 +1,34 @@
+\pdfbookmark[0]{English title page}{label:titlepage_en}
+\aautitlepage{%
+  \englishprojectinfo{
+    \TITLE %title
+  }{%
+    P5-project
+  }{%
+    Fall Semester 2024 %project period
+  }{%
+    ES22-ESD5-510 % project group
+  }{%
+    %list of group members
+    Johan Guldberg Theil\\
+    Mikkel Norre Nielsen\\
+    Marcus Vinicius Hodal Xavier de Oliveira\\
+    Rasmus Mellergaard Christensen\\
+    Valdemar Lunddal Jensen
+    
+  }{%
+    %list of supervisors
+    Jan H. Mikkelsen \\
+    Jesper Ødum Nielsen
+  }{%
+    1 % number of printed copies
+  }{%
+    \today % date of completion
+  }%
+}{%department and address
+  \textbf{Electronics and System Design}\\
+  Aalborg University\\
+  \href{http://www.aau.dk}{http://www.aau.dk}
+}{% the abstract 
+    This report explores the implementation of a near-field to far-field transformation, and functionality to simulate different near-field measurement errors. The error types and constraints are based on an on-site drone measurement system, where the primary focus is antennas used for space communication or generally large antennas. The transformation implemented is the SNIFT transformation described by J.E. Hansen. The implemented program is separated into three sections: pre-processing, transformation, and post-processing. The implemented transform is only accurate for the main lobe and first sidelobe of the horn antenna tested. The errors analyzed are: noise, positioning errors, and gimbal accuracy. The noise test revealed that the transform fails at 30 dB, where noise affects the sidelobes but has minimal impact on the half-power beamwidth. Similarly, the positioning error test indicated that the transform breaks at a $\pm5 [mm]$ position accuracy under normal and uniform distributed errors, whereas correlated errors had no significant effect. 
+    In contrast, the gimbal accuracy test demonstrated there was no need for a very precise gimbal if the probe antenna is not very directional.}

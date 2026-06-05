@@ -1,0 +1,90 @@
+\chapter{Introduction and Problem Statement} \label{section:initialProblem}
+
+Wireless communication has become a larger and more vital part of modern society, and will only expand in the coming years.
+Antennas are an essential part of a wireless system, enabling the transmission and reception of radio waves. They come in many varieties, with different shapes and sizes, and can be designed to operate across different frequency bands and ranges.
+\\
+\\
+Antenna variety means that there is a lot to choose from for different uses, which comes from the many variances found in the characteristics. It is important to have knowledge about these to choose and make the best antenna for the specific scenario.
+\\
+\\
+When determining/testing the characteristics of an antenna the environment is usually an anechoic chamber to remove reflection errors. The characteristics often desired are the gain, directivity, and half power beamwidth, \gls{HPBW}. Generally getting a far field, \gls{FF}, radiation pattern that describes the characteristics of the antenna is desired. This is because antennas usually operate in the \gls{FF} region, and therefore measurements are taken in that region if possible. This, however, creates challenges when dealing with antennas that are too large to be measured in an anechoic chamber or when transporting them to such facilities is immensely difficult or expensive.
+\\
+\\
+This is where testing on-site could be beneficial. It has the benefit of giving the real performance of the antenna, meaning in a real-world scenario where the noise and the environment could be a place expected for the antenna to operate in.
+This, however, creates another difficulty when the far field for the larger antenna's are also further away, leading to the measurements wanted to be taken in a closer position to the antenna, that is in the near field, \gls{NF}, creating the necessity to transform \gls{NF} to \gls{FF}, estimating the far field.
+
+An example of this is an antenna with $f= 10 G[Hz] $ and $ D = 10 [m]$ \footnote{These are arbitrary numbers that will be used throughout this report as an example. The frequency is based of the fact that this is the middle frequency in the X-band, and the diameter is based of the wishes of measuring antennas larger than $D=8[m]$}, where the Fraunhofer distance is $ \frac{2 d^2}{\lambda}$ that being where the \gls{FF} starts \cite{balanis}. 
+
+This means that $FF_{start} = 6.67 [km]$. This is where the fresnel/radiating near field can be used with the transform \gls{NF} to \gls{FF}, which starts at the fresnel distance being $0.62\cdot\sqrt{\frac{D^3}{\lambda}}$, in this example resulting in $113 [m]$, and therefore having the possibility to get much closer measurements.\\
+\\
+\begin{comment}
+QuadSat is a danish-based company that wishes to do on-site measurements by flying a drone around the antenna under test, \gls{AUT}. \\
+Currently, they 
+1) take the measurements in the \gls{FF} \\
+2) send from their drone and use the \gls{AUT} to receive.
+This is problematic as the \gls{FF} for large antennas, starts several kilometers away. The \gls{FF} starts at $ \frac{2 d^2}{\lambda}$, \cite{balanis}, and for a $10 G [Hz] $ antenna with a $ d = 10 [m]$ gives $FF_{start} = 6.67 [km]$ and for $ d = 8 [m]$ gives $ FF_{starts} = 4.27 [km] $. \\
+QuadSat therefore wishes to improve their current concept to make \gls{NF} measurements and then obtain the \gls{FF} radiation pattern by processing the \gls{NF} measurements.
+\end{comment} 
+\clearpage
+This report will therefore look into a system where a drone is used for on-site measurements.
+It would function by flying a drone around the antenna under test, \gls{AUT}, using a probe placed on the drone which uses a gimbal to point the probe towards the \gls{AUT}, example seen in figure \ref{fig:intro:system}
+\begin{figure}[H]
+    \centering
+    \includegraphics[trim={0 650 0 0}, clip, width=0.85\linewidth]{figures/40technicalAnalysis/currentsetup/setupsystem.jpg}
+    \caption{Shows how the drone could fly around the \gls{AUT}.}
+    \label{fig:intro:system}
+\end{figure}
+There will be an investigation of the possibility of making the \gls{NF} measurements, and then transforming them into the \gls{FF}.
+There are multiple ways of doing this.
+Working with a free-flying drone adds another level of complexity, which should lead to some new errors during testing.
+It should create the advantage of testing many different antennas on-site, which traditionally would be very problematic. \\
+\\
+As this field is unknown territory for this type of drone-based system, and with many possible errors and problems that need to be mitigated properly to make an acceptable \gls{NF} to \gls{FF} transformation, it raises the question:
+
+\begin{center}
+    \textbf{\textit{How can a drone-based system be implemented to obtain \gls{FF} radiation patterns from \gls{NF} measurements on-site and what information is necessary to do so? Which factors will impact the quality of the transformation, to what degree, and how can it potentially be mitigated? }}
+\end{center}
+
+\begin{comment}
+
+
+%When expeditions are moving alone in the wild, e.g. the arctics, there is not many opportunities to communicate with the base station. This is due to many factors, but the lack of power sources and telephone poles is a part of this. Transmitting data is something that can already be done at a low power output, but this is done mainly via satellite (indsæt kilde hvis vi får det). Building a low power directed transmitter can be desirable for these expeditions, as it eliminates the need to come back to basecamp to communicate this back.
+
+Radio Detection and Ranging, \gls{RADAR}, is a way of detecting and locating objects using electromagnetic waves. \gls{RADAR} systems operate by emitting electromagnetic waves towards an object, and then receiving the reflected wave from the object. \gls{RADAR}s mostly operate within the microwave frequency spectrum, 300 MHz to 300 GHz, which is divided up in a lot of different bands \cite{radarDefinition}.
+\newline
+\newline
+More specifically, there are two types of \gls{RADAR} systems, passive and active. A passive \gls{RADAR} needs to be in an array, and only "listens" and it can locate an object in a direction and track the direction of it \cite{echodyneActiveVSPassiv}.
+\newline
+\newline
+Like the passive \gls{RADAR}, the active \gls{RADAR} can also detect and track objects. But unlike the passive, the active \gls{RADAR} works by having an antenna radiating a narrow beam of microwave waves out to a space where an object could be. If / when the object interacts with the radiated beam, some of the energy will be reflected towards the antenna, where it would be ready to receive the reflected energy, \cite{echodyneActiveVSPassiv}. Depending on the setup, there are some different methods to receive the reflected wave. One method to receive is to ensure the antenna does not send when it should be receiving. This could be done by sending a pulse out and then having some dead time where it listens after the reflected pulse, \cite{radarDefinition}. Another method way is to have both a transmitter and receiver, allowing to send pulses quicker if the pulses vary in signature. 
+\newline
+\newline
+\gls{RADAR} can be utilized for many different applications and within many different fields. One such application of \gls{RADAR} could be drone detection. As drones have been getting more popular, they impose an increasing problem as drones are not allowed to fly in air spaces around military areas, airports, Helicopter Emergency Medical Service, \gls{HEMS}, and many other cases, \cite{droneZonesTraffikstyrelsen}. Therefore systems that detect drones exist to prevent them from entering restricted air spaces. Other markets are also for private users who wish to protect privacy and be notified in case of a drone surveying the property, which falls under the category of Counter Surveliance Devices, \gls{CSD}.
+There is a wide range of products on the market, ranging from complex to simple \gls{RADAR}s. Companies such as TERMA and WEIBEL usually have complex \gls{RADAR}s with advanced high-cost solutions, where as smaller companies or private users can tend to have simpler cases with less complexity and an expected lower price \cite{termaDetectDrones,weibelRadarDetectDrone,dedroneSolution}. However, companies state that the price depends on the complexity and scope of the desired solution. 
+\newline
+\newline
+This raises the natural question and which is the problem statement of this report:
+\begin{center}
+\vspace{0.5cm}
+\textbf{\textit{"How can a radar-based system be designed, to track moving airborne drones"}}
+\end{center}
+  
+Today in communication, satellite communication is used worldwide because of its easy access, coming from the large amount of satellites orbiting 
+the earth.
+There are though scenarios were satellite coverage isn't possible or isn't desired.
+Therefore a short range line of sight communication system could be utilized, where a portable system can track and point to a stationary base station.
+
+\begin{figure}[H]
+    \centering
+    \includesvg[width=0.95\textwidth]{figures/introduction/IntroductionSystemFigure.svg}
+    \caption{Simplified figure of the system. Bi-directional wireless communication between a stationary station and a portable station carried in a backpack.}
+    \label{fig:introduction:introductionSystemFigure}
+\end{figure}
+
+This report explores the design of a short range directed transmitter, that adapts to the location of the portable station. 
+This leads to the following problem statement:
+\begin{center}
+\vspace{1cm}
+\textbf{\textit{"How can a low power directional communication system be constructed to track and point to the portable station?"}}
+\end{center}
+\end{comment}
