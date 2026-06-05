@@ -2,10 +2,8 @@
 % Exercise 2 - RTC Toolbox Analysis of Sensor Network (continuation of Ex 1)
 % Networks and Systems, Lecture 4/5
 %
-% System: 8 sensors each producing 100 bits every 1ms, packetised into
-% packets of N data samples + 100 bits overhead, sent over a shared 1Mbps
-% link.  All 8 sensors share the same link -- aggregate arrival rate and
-% burst depend on N.
+% Requires: RTC Toolbox installed and initialised (run rtc_init first)
+% Units throughout: time in [ms], data in [bits], rate in [kbps = bits/ms]
 % =========================================================================
 
 clear; clc;
@@ -19,7 +17,10 @@ s  = 1000;   % communication link speed [kbps]
 % Could you insert exercise 1 here find that N is the maximum link
 % ulitilzation here
 
+
+
 fprintf('=== Exercise 2: RTC Toolbox Analysis ===\n\n');
+
 
 % =========================================================================
 % PART 1: Encode arrival and service curves for N = 4 (theoretical minimum)
@@ -43,21 +44,6 @@ fprintf('  Packet length  L     = %d bits\n',  L);
 fprintf('  Inter-pkt period P   = %d ms\n',    P);
 fprintf('  Aggregate rate r_agg = %d kbps\n',  r_agg);
 fprintf('  Aggregate burst b_agg= %d bits\n\n',b_agg);
-
-% =========================== Model Interpretation before begining ====
-% The leaky bucket interpretation (Prop 1.2.3):
-%   - bucket size b_agg: absorbs the burst when all 8 sensors fire at once
-%   - fills at arrival rate r_agg [kbps] when packets come in
-%   - drains at service rate s [kbps] -- the link emptying the queue
-%   - bucket level = alpha(t) - beta(t) = backlog at time t
-%   - if bucket would overflow -> non-conformant, delay grows unbounded
-%
-% Modelled as affine linear instead of staircase (actual periodic arrivals)
-% because the two are equivalent for constant packet size (Prop 1.2.2) and
-% the straight line always sits above the staircase -- guaranteeing the
-% computed delay and backlog bounds hold for the real traffic in all cases.
-% =====================================================================
-
 
 % Arrival curve: token bucket  alpha(t) = r_agg * t + b_agg
 % rtccurve([[x0  y0  slope]]) defines a piecewise-linear curve where:
@@ -98,8 +84,7 @@ fprintf('Worst-case backlog (rtcv): %.0f bits\n\n', backlog);
 X_MAX = 50;  % plot x-range [ms]
 
 
-% backlog_curve = alpha - beta = bucket level over time:
-% if stable (r_agg < s) the backlog drains to zero after the initial burst.
+% rtcminus(a,b) returns a backlog curve
 % rtcmax(c, 0)  clamps the curve so it never goes below 0.
 backlog_curve = rtcmax(rtcminus(alpha_agg, beta), 0);
 
@@ -142,12 +127,14 @@ fprintf('%-4s  %-12s  %-6s  %-12s  %-12s\n', ...
 fprintf('%s\n', repmat('-', 1, 55));
 for N_val = 1:8
     L_n   = 100*N_val + O;              % Packet length
-    r_n   = ns * L_n / (N_val*T);       % aggregate rate of all 8 sensors [kbps] 
-    b_n   = ns * L_n;                   % aggregate burst [bits]: 8 simultaneous packets
-    rho_n = r_n / s;                    % Utilization or what 
-    a_n = rtccurve([[0  b_n  r_n]]);    % create arrival curve given n_val data points
-    d_n = rtch(a_n, beta);              % Max Delay 
-    v_n = rtcv(a_n, beta);              % Max Backlog 
+    r_n   = ns * L_n / (N_val*T);       % aggregated 
+    b_n   = ns * L_n;                   % aggregate rate of all 8 sensors [kbps]
+    rho_n = r_n / s;                    % aggregate burst [bits]: 8 simultaneous packets
+    r_agg = ns * r_s;        % aggregate rate of all 8 sensors [kbps]
+    b_agg = ns * b_s;        % aggregate burst [bits]: 8 simultaneous packets
+    a_n = rtccurve([[0  b_n  r_n]]);
+    d_n = rtch(a_n, beta);
+    v_n = rtcv(a_n, beta);
     if isinf(d_n)
         fprintf('%-4d  %-12.1f  %-6.3f  %-12s  %-12s\n', ...
                 N_val, r_n, rho_n, 'Inf', 'Inf');

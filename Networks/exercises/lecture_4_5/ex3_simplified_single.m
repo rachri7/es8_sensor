@@ -51,30 +51,26 @@ end
 % PART 2: Arrival curves for the three nodes
 %
 % Each node sends one packet of L bits every T_i ms (periodic, no jitter).
-% Upper/lower PJD curves give a staircase interval bounding the arrivals:
-%   upper: at most ceil(t/T_i) packets in any window of length t
-%   lower: at least floor(t/T_i) packets in any window of length t
+% rtcpjd(P, J, D) returns a single staircase arrival curve where:
+%   P = period [ms], J = jitter = 0, D = min inter-arrival = 0
 %
 % These are event-level curves (packets, not bits) -- scaled to bits
 % internally by rtcgpc via the execution demand ED = L bits/packet.
 % =========================================================================
-alpha0_u = rtcpjdu(T0);  % Node 0 upper
-alpha0_l = rtcpjdl(T0);  % Node 0 lower
-alpha1_u = rtcpjdu(T1);  % Node 1 upper
-alpha1_l = rtcpjdl(T1);  % Node 1 lower
-alpha2_u = rtcpjdu(T2);  % Node 2 upper
-alpha2_l = rtcpjdl(T2);  % Node 2 lower
+
+alpha0 = rtcpjd(T0, 0, 0);  % Node 0: one packet every T0 ms
+alpha1 = rtcpjd(T1, 0, 0);  % Node 1: one packet every T1 ms
+alpha2 = rtcpjd(T2, 0, 0);  % Node 2: one packet every T2 ms
 
 % =========================================================================
 % PART 3: Service curve of the CAN bus
 %
 % CAN bus modelled as a pure-rate server at C kbps (delay = 0).
-% Upper/lower bounded-delay curves give a service interval:
-%   upper: at most C*t bits served in any window of length t
-%   lower: at least C*t bits guaranteed in any window of length t
+% rtcbdu(0, C) gives the upper bounded-delay service curve: C*t bits
+% served in any window of length t.
 % =========================================================================
-beta_u = rtcbdu(0, C);   % upper service curve for CAN bus
-beta_l = rtcbdl(0, C);   % lower service curve for CAN bus
+
+beta = rtcfs(C);   % C resource units per time unit = C kbps
 
 % =========================================================================
 % PART 4: Priority scheduling via Greedy Processing Component (GPC) chain
@@ -87,123 +83,100 @@ beta_l = rtcbdl(0, C);   % lower service curve for CAN bus
 %   Node 2  <-- residual after Node 0 and Node 1
 %
 % Each rtcgpc call takes:
-%   input:  arrival interval [AU, AL] and available service interval [BU, BL]
-%           scaled by ED = L bits/packet
-%   output: [AU_out, AL_out] -- output arrival interval after the bus
-%           [BU_res, BL_res] -- residual service interval
-%           del              -- worst-case delay from packet arriving at bus
-%                              to leaving the bus (queuing + transmission)
-%           buf              -- worst-case buffer requirement [packets]
+%   input:  arrival curve, available service curve, execution demand ED=L
+%   output: a_out  -- output arrival curve after the bus
+%           b_res  -- residual service curve for lower-priority nodes
+%           del    -- worst-case delay from packet arriving to leaving bus
+%           buf    -- worst-case buffer requirement [packets]
 % =========================================================================
 
 fprintf('--- Priority scheduling (GPC chain) ---\n');
 
 % Node 0 (highest priority): gets the full service
-[a0u_out, a0l_out, b0u_res, b0l_res, del0, buf0] = ...
-    rtcgpc(alpha0_u, alpha0_l, beta_u, beta_l, L);
+[a0_out, b0_res, del0, buf0] = rtcgpc(alpha0, beta, L);
 % del0 = 0.5ms = L/C = 100/200:
 % must be EITHER own transmission time OR waiting for one blocking packet --
 % cannot be both else result would be 1.0ms.
 % both equal L/C = 0.5ms so result is the same either way.
-
 fprintf('Node 0 (T0=%dms, highest priority, CAN-ID 0x000):\n', T0);
-fprintf('  Max p2p delay  = %.3f ms\n', del0);
-fprintf('  Max buffer     = %.0f pkts  (%d bits)\n\n', buf0, buf0*L);
+fprintf('  Max delay  = %.3f ms\n', del0);
+fprintf('  Max buffer = %.0f pkts  (%d bits)\n\n', buf0, buf0*L);
 
 % Node 1 (second priority): gets the residual after Node 0
-[a1u_out, a1l_out, b1u_res, b1l_res, del1, buf1] = ...
-    rtcgpc(alpha1_u, alpha1_l, b0u_res, b0l_res, L);
-
+[a1_out, b1_res, del1, buf1] = rtcgpc(alpha1, b0_res, L);
+% del1 = 1.0ms = 2*L/C: one blocking packet + own transmission.
 fprintf('Node 1 (T1=%dms, second priority,  CAN-ID 0x001):\n', T1);
-fprintf('  Max p2p delay  = %.3f ms\n', del1);
-fprintf('  Max buffer     = %.0f pkts  (%d bits)\n\n', buf1, buf1*L);
+fprintf('  Max delay  = %.3f ms\n', del1);
+fprintf('  Max buffer = %.0f pkts  (%d bits)\n\n', buf1, buf1*L);
 
 % Node 2 (lowest priority): gets the residual after Nodes 0 and 1
-[a2u_out, a2l_out, b2u_res, b2l_res, del2, buf2] = ...
-    rtcgpc(alpha2_u, alpha2_l, b1u_res, b1l_res, L);
-
+[a2_out, b2_res, del2, buf2] = rtcgpc(alpha2, b1_res, L);
+% del2 = 1.5ms = 3*L/C: one blocking packet + Node 0 + own transmission.
 fprintf('Node 2 (T2=%dms, lowest  priority, CAN-ID 0x002):\n', T2);
-fprintf('  Max p2p delay  = %.3f ms  <-- answer to exercise\n', del2);
-fprintf('  Max buffer     = %.0f pkts  (%d bits)\n\n', buf2, buf2*L);
-
-% ============= Reason for results ============================%
+fprintf('  Max delay  = %.3f ms  <-- answer to exercise\n', del2);
+fprintf('  Max buffer = %.0f pkts  (%d bits)\n\n', buf2, buf2*L);
 
 % =========================================================================
-% FIGURE 2: Output arrival curves -- upper and lower for all three nodes
+% FIGURE 2: Input vs output arrival curves for all three nodes
 %
-% After the GPC chain each node has an output arrival curve pair:
-%   upper (solid)  -- worst-case: most packets that can arrive in any window
-%   lower (dashed) -- best-case:  fewest packets that must arrive
+% Solid   = input  alpha_i  (what the node sends onto the bus)
+% Dashed  = output a_i_out  (what departs the bus after queuing)
 %
-% Node 0 (red):    highest priority, served first, output close to input
-% Node 1 (blue):   must wait for Node 0, output burst is slightly larger
-% Node 2 (magenta):lowest priority, waits for both, largest output burst
-%
-% The gap between upper and lower for each node shows the uncertainty in
-% the arrival process after the bus -- a wide gap means the timing of
-% packets leaving the bus is less predictable.
+% The output curve sits above the input -- the burst grows because
+% bus delay allows packets to bunch closer together than they arrived.
+% The higher the priority, the smaller the burst increase.
 % =========================================================================
- 
+
 Max_Time_on_plot = 30;
- 
+
 figure(2); clf;
-rtcplot(a0u_out, 'r-',  ...   % Node 0 upper
-        a0l_out, 'r--', ...   % Node 0 lower
-        a1u_out, 'b-',  ...   % Node 1 upper
-        a1l_out, 'b--', ...   % Node 1 lower
-        a2u_out, 'm-',  ...   % Node 2 upper
-        a2l_out, 'm--', ...   % Node 2 lower
+rtcplot(alpha0, 'r-',  ...   % Node 0 input
+        a0_out, 'r--', ...   % Node 0 output
+        alpha1, 'b-',  ...   % Node 1 input
+        a1_out, 'b--', ...   % Node 1 output
+        alpha2, 'm-',  ...   % Node 2 input
+        a2_out, 'm--', ...   % Node 2 output
         Max_Time_on_plot, 'LineWidth', 1.5);
- 
-legend( sprintf('Node 0 upper  \\alpha_0^* (T_0=%d ms, highest prio)', T0), ...
-        sprintf('Node 0 lower  \\alpha_{0,l}^*'),                            ...
-        sprintf('Node 1 upper  \\alpha_1^* (T_1=%d ms)',                T1), ...
-        sprintf('Node 1 lower  \\alpha_{1,l}^*'),                            ...
-        sprintf('Node 2 upper  \\alpha_2^* (T_2=%d ms, lowest prio)',   T2), ...
-        sprintf('Node 2 lower  \\alpha_{2,l}^*'),                            ...
+
+legend( sprintf('Node 0 input   \\alpha_0   (T_0=%d ms, highest prio)', T0), ...
+        sprintf('Node 0 output  \\alpha_0^*'),                               ...
+        sprintf('Node 1 input   \\alpha_1   (T_1=%d ms)',                T1), ...
+        sprintf('Node 1 output  \\alpha_1^*'),                               ...
+        sprintf('Node 2 input   \\alpha_2   (T_2=%d ms, lowest prio)',   T2), ...
+        sprintf('Node 2 output  \\alpha_2^*'),                               ...
         'Location', 'northwest');
-title('Output arrival curves after GPC chain  (solid=upper, dashed=lower)');
+title('Input vs output arrival curves  (solid=input, dashed=output after bus)');
 xlabel('Time t [ms]');
 ylabel('Cumulative events [packets]');
 grid on;
- 
+
 % =========================================================================
-% FIGURE 3: Residual service curves -- upper and lower for each stage
+% FIGURE 3: Full service beta vs residual service curves
 %
-% Each colour is one stage in the GPC chain.  Solid = upper, dashed = lower.
+% beta   (black) -- full CAN service before any node is served
+% b0_res (blue)  -- residual after Node 0: what Node 1 and Node 2 share
+% b1_res (red)   -- residual after Node 1: what Node 2 receives
+% b2_res (magenta)-- unused capacity after all three nodes
 %
-% UPPER residual (solid) = MOST service that could be left over.
-%
-% LOWER residual (dashed) = LEAST service that is guaranteed to be left.
-%
-% Blue  (b0u/b0l): residual after Node 0 -- what Node 1 and Node 2 share.
-% Red   (b1u/b1l): residual after Node 1 -- what Node 2 receives.
-%                  Lower red curve = guaranteed service for Node 2.
-% Magenta (b2u/b2l): residual after Node 2 -- unused capacity on the bus.
+% Each residual is lower than the previous -- each node consumes its share.
 % =========================================================================
- 
 
 figure(3); clf;
-rtcplot(beta_u,    'k-', ...    % full service ...
-        b0u_res, 'b-',  ...   % residual upper after Node 0
-        b0l_res, 'b--', ...   % residual lower after Node 0
-        b1u_res, 'r-',  ...   % residual upper after Node 1
-        b1l_res, 'r--', ...   % residual lower after Node 1
-        b2u_res, 'm-',  ...   % residual upper after Node 2 (what's left unused)
-        b2l_res, 'm--', ...   % residual lower after Node 2
+rtcplot(beta,   'k-', ...   % full service
+        b0_res, 'b-', ...   % residual after Node 0
+        b1_res, 'r-', ...   % residual after Node 1
+        b2_res, 'm-', ...   % residual after Node 2
         Max_Time_on_plot, 'LineWidth', 1.5);
-legend( sprintf('\\beta_0^{res} upper  after Node 0  (T_0=%d ms)', T0), ...
-        sprintf('\\beta_0^{res} lower  after Node 0'),                   ...
-        sprintf('\\beta_1^{res} upper  after Node 1  (T_1=%d ms)', T1), ...
-        sprintf('\\beta_1^{res} lower  after Node 1'),                   ...
-        sprintf('\\beta_2^{res} upper  after Node 2  (unused)'),         ...
-        sprintf('\\beta_2^{res} lower  after Node 2'),                   ...
+legend( sprintf('\\beta          full CAN service  C=%d kbps',         C),  ...
+        sprintf('\\beta_0^{res}  residual after Node 0  (T_0=%d ms)', T0),  ...
+        sprintf('\\beta_1^{res}  residual after Node 1  (T_1=%d ms)', T1),  ...
+        sprintf('\\beta_2^{res}  residual after Node 2  (unused)'),         ...
         'Location', 'northwest');
-title('Residual service curves  (solid=upper, dashed=lower)');
+title('Service curve and residuals after priority scheduling');
 xlabel('Time t [ms]');
-ylabel('Cumulative events [packets]');
+ylabel('Cumulative bits');
 grid on;
- 
+
 % =========================================================================
 % PART 5: Receive buffer for Node 2
 %
@@ -214,19 +187,11 @@ grid on;
 %       S = share allocated per period = 1 packet
 %       P = period of the reader = T_rx  (must be integer)
 %       B = bandwidth (unit: 1 packet/slot)
-% =========================================================================
-% =========================================================================
-% FIGURE 4: Receive buffer -- Node 2 output vs periodic drain
-% FOR NODE (2)
-% a2u_out    (magenta) -- worst-case: most packets that can arrive in any
-% window (for node 2)
-% a2l_out    (blue)    -- best-case:  fewest packets that must arrive 
-% beta_rx_l  (green)   -- periodic drain: 1 packet read every T_rx ms.
 %
-% The VERTICAL GAP between a2u_out and beta_rx_l is the worst-case backlog.
-% should model Trx based of a2u_out
+% Minimum buffer size (to avoid packet loss) =
+%   maximum vertical distance between arrival and drain curves =
+%   rtcv(a2_out, beta_rx_l)
 % =========================================================================
-
 
 fprintf('--- Receive buffer at Node 2 (T_rx = %d ms) ---\n', T_rx);
 
@@ -234,30 +199,41 @@ fprintf('--- Receive buffer at Node 2 (T_rx = %d ms) ---\n', T_rx);
 beta_rx_l = rtcpsl(1, T_rx, 1);  % 1 packet per T_rx ms, unit bandwidth
 
 % Minimum buffer size [events = packets]
-buf_min = rtcv(a2u_out, beta_rx_l);
-%  rtcplotv draws a vertical spike at x=0 from y=0 to y=backlog_max 
-% (min buffer needed )
+% rtcv computes the maximum vertical distance (backlog) between arrival
+% and drain curves -- requires both to be in the same event/packet domain.
+buf_min = rtcv(a2_out, beta_rx_l);
 fprintf('  Min buffer size = %.0f pkts  (%d bits)\n\n', buf_min, buf_min*L);
- 
+
+% =========================================================================
+% FIGURE 4: Receive buffer -- Node 2 output vs periodic drain
+%
+% a2_out     (magenta) -- worst-case arrivals at the buffer.
+%                         Slope = 1/T2 pkts/ms, burst larger than input
+%                         because bus delay bunches packets together.
+% beta_rx_l  (green)   -- periodic drain: 1 packet read every T_rx ms.
+%                         Staircase -- flat between reads, steps up.
+%
+% The VERTICAL GAP between a2_out and beta_rx_l is the worst-case backlog.
+% If a2_out slope > beta_rx_l slope (T_rx > T2), gap grows unbounded -> Inf.
+% For finite buffer need T_rx < T2 = 3ms.
+% =========================================================================
+
 figure(4); clf;
-rtcplot(a2u_out,       'm-',  ...
-        a2l_out,       'b--', ...
-        beta_rx_l, 'g-',  ...
-        Max_Time_on_plot, 'LineWidth', 1.5);
- 
-buf_min = rtcplotv(a2u_out, beta_rx_l, 'g', 'LineWidth', 2);
- 
-legend( sprintf('\\alpha_2^*(t)    Node 2 output UPPER  (worst-case arrivals)'),          ...
-        sprintf('\\alpha_{2,l}^*(t) Node 2 output LOWER  (best-case arrivals)'),          ...
-        sprintf('\\beta_{rx}(t)    periodic drain  T_{rx}=%d ms  (1 pkt/period)', T_rx),  ...
-        sprintf('rtcplotv          min buffer = %.0f pkts = %.0f bits', buf_min, buf_min*L), ...
+rtcplot(a2_out,    'm-', ...
+        beta_rx_l, 'g-', ...
+        T_rx * 4, 'LineWidth', 1.5);
+
+buf_min = rtcplotv(a2_out, beta_rx_l, 'g', 'LineWidth', 2);
+
+legend( sprintf('\\alpha_2^*(t)  Node 2 output (worst-case arrivals)'),           ...
+        sprintf('\\beta_{rx}(t)  periodic drain  T_{rx}=%d ms  (1 pkt/period)', T_rx), ...
+        sprintf('rtcplotv        min buffer = %.0f pkts = %.0f bits', buf_min, buf_min*L), ...
         'Location', 'northwest');
 title(sprintf('Receive buffer | delay = %.2f ms | Buffer = %.0f pkts (%d bits) | T_{rx}=%d ms', ...
               del2, buf_min, buf_min*L, T_rx));
 xlabel('Time t [ms]');
 ylabel('Cumulative events [packets]');
 grid on;
-
 
 % =========================================================================
 % PART 6: Parametric analysis -- vary T_rx and C
@@ -273,7 +249,7 @@ fprintf('%s\n', repmat('-', 1, 55));
 for T_test = [2 3 4 5 6 8 10 15 20]
     if T_test < 1, continue; end
     b_rx_t   = rtcpsl(1, T_test, 1);
-    buf_test = rtcv(a2u_out, b_rx_t);
+    buf_test = rtcv(a2_out, b_rx_t);
     if isinf(buf_test)
         fprintf('%-12d  %-20s  %-20s\n', T_test, 'Inf', 'Inf (reader too slow)');
     else
@@ -282,22 +258,21 @@ for T_test = [2 3 4 5 6 8 10 15 20]
 end
 fprintf('\n');
 
-fprintf('--- Parametric: Node 2 p2p delay and buffer vs. bitrate C ---\n');
+fprintf('--- Parametric: Node 2 delay and buffer vs. bitrate C ---\n');
 fprintf('  (T_rx = %d ms,  C sweeps above C_min = %.2f kbps)\n\n', T_rx, C_min);
 fprintf('%-12s  %-15s  %-15s  %-15s\n', 'C [kbps]', 'rho', 'del2 [ms]', 'buf_min [pkts]');
 fprintf('%s\n', repmat('-', 1, 60));
 
 for C_test = [110 120 150 200 300 500 1000]
     % Rebuild GPC chain for this bitrate
-    bu_t = rtcbdu(0, C_test);
-    bl_t = rtcbdl(0, C_test);
+    beta_t = rtcbdu(0, C_test);   % service curve at this bitrate
 
-    [~, ~, b0u_t, b0l_t, ~, ~] = rtcgpc(alpha0_u, alpha0_l, bu_t,   bl_t,   L);
-    [~, ~, b1u_t, b1l_t, ~, ~] = rtcgpc(alpha1_u, alpha1_l, b0u_t,  b0l_t,  L);
-    [a2u_t, ~, ~, ~, d2_t, ~]  = rtcgpc(alpha2_u, alpha2_l, b1u_t,  b1l_t,  L);
+    [~, b0_t, ~, ~]    = rtcgpc(alpha0, beta_t, L);
+    [~, b1_t, ~, ~]    = rtcgpc(alpha1, b0_t,   L);
+    [a2_t, ~, d2_t, ~] = rtcgpc(alpha2, b1_t,   L);
 
     b_rx_t  = rtcpsl(1, T_rx, 1);
-    buf_t   = rtcv(a2u_t, b_rx_t);
+    buf_t   = rtcv(a2_t, b_rx_t);
     rho_t   = L*(1/T0 + 1/T1 + 1/T2) / C_test;
 
     if isinf(d2_t)
