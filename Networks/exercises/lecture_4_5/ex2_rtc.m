@@ -16,9 +16,6 @@ T  = 1;      % sampling period per sensor [ms]
 O  = 100;    % fixed packet overhead (header + error detection) [bits]
 s  = 1000;   % communication link speed [kbps]
 
-% Could you insert exercise 1 here find that N is the maximum link
-% ulitilzation here
-
 fprintf('=== Exercise 2: RTC Toolbox Analysis ===\n\n');
 
 % =========================================================================
@@ -44,23 +41,12 @@ fprintf('  Inter-pkt period P   = %d ms\n',    P);
 fprintf('  Aggregate rate r_agg = %d kbps\n',  r_agg);
 fprintf('  Aggregate burst b_agg= %d bits\n\n',b_agg);
 
-% =========================== Model Interpretation before begining ====
-% The leaky bucket interpretation (Prop 1.2.3):
-%   - bucket size b_agg: absorbs the burst when all 8 sensors fire at once
-%   - fills at arrival rate r_agg [kbps] when packets come in
-%   - drains at service rate s [kbps] -- the link emptying the queue
-%   - bucket level = alpha(t) - beta(t) = backlog at time t
-%   - if bucket would overflow -> non-conformant, delay grows unbounded
-%
-% Modelled as affine linear instead of staircase (actual periodic arrivals)
-% because the two are equivalent for constant packet size (Prop 1.2.2) and
-% the straight line always sits above the staircase -- guaranteeing the
-% computed delay and backlog bounds hold for the real traffic in all cases.
-% =====================================================================
+% =========================================================================
+% PART 1: Modelled as Token Bucket (leaky bucket)
+% =========================================================================
 
 
 % Arrival curve: token bucket  alpha(t) = r_agg * t + b_agg
-% rtccurve([[x0  y0  slope]]) defines a piecewise-linear curve where:
 %   x0    = starting x-coordinate of the segment
 %   y0    = starting y-coordinate of the segment (the burst intercept)
 %   slope = rate of the segment (bits per ms = kbps)
@@ -70,17 +56,7 @@ alpha_agg = rtccurve([[0  b_agg  r_agg]]);
 beta = rtccurve([[0  0  s]]);
 
 % =========================================================================
-% PART 2: Worst-case delay via rtch (maximum Horizontal distance)
-%
-% For alpha(t) = r*t + b  and  beta(t) = s*t:
-%   r > s  -->  delay = Inf  (arrival rate exceeds link rate -- UNSTABLE)
-%   r = s  -->  delay = b/s  (parallel curves, constant gap forever)
-%   r < s  -->  delay = b/s  (worst case at t=0, then decreases)
-%
-% PART 3: Worst-case backlog via rtcv (maximum Vertical distance)
-%   r > s  -->  Inf (queue grows without bound)
-%   r = s  -->  b_agg (constant permanent backlog, never drains)
-%   r < s  -->  b_agg (worst case at t=0, then decreases to 0)
+% PART 2: Worst-case delay (horizational) and backlog (vertical)
 % =========================================================================
 
 delay = rtch(alpha_agg, beta);
@@ -90,9 +66,7 @@ backlog = rtcv(alpha_agg, beta);
 fprintf('Worst-case backlog (rtcv): %.0f bits\n\n', backlog);
 
 % =========================================================================
-% PART 4 (cont.): Build Figure 1 -- all using RTC curve objects
-% rtcplotv / rtcploth return the scalar max value when called with an
-% output argument:  val = rtcplotv(alpha, beta)
+% PART 3 Build Figure -- all using RTC curve objects
 % =========================================================================
 
 X_MAX = 50;  % plot x-range [ms]
@@ -132,7 +106,6 @@ grid on;
 
 % =========================================================================
 % PART 5: Find the optimal N using the RTC toolbox
-%
 % Sweep N=1..8: the minimum N where rtch is FINITE is the optimal value.
 % =========================================================================
 
