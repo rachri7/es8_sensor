@@ -1,0 +1,356 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[a4paper, top=0.9cm, bottom=0.9cm, left=1cm, right=1cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[table]{xcolor}
+\usepackage{mdframed}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+\usepackage[T1]{fontenc}
+
+% ── Colours ────────────────────────────────────────────────────────────────
+\definecolor{keyblue}{RGB}{30, 80, 160}
+\definecolor{keybluebg}{RGB}{220, 235, 255}
+\definecolor{noteorange}{RGB}{200, 100, 0}
+\definecolor{noteorangebg}{RGB}{255, 240, 215}
+\definecolor{warnred}{RGB}{180, 30, 30}
+\definecolor{warnredbg}{RGB}{255, 220, 220}
+\definecolor{defgreen}{RGB}{20, 110, 50}
+\definecolor{defgreenbg}{RGB}{215, 245, 225}
+\definecolor{headernavy}{RGB}{25, 35, 90}
+
+\newmdenv[linecolor=keyblue,backgroundcolor=keybluebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=7pt,innerrightmargin=6pt,
+  innertopmargin=3pt,innerbottommargin=3pt,
+  skipabove=3pt,skipbelow=3pt]{keybox}
+
+\newmdenv[linecolor=noteorange,backgroundcolor=noteorangebg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=7pt,innerrightmargin=6pt,
+  innertopmargin=3pt,innerbottommargin=3pt,
+  skipabove=3pt,skipbelow=3pt]{notebox}
+
+\newmdenv[linecolor=defgreen,backgroundcolor=defgreenbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=7pt,innerrightmargin=6pt,
+  innertopmargin=3pt,innerbottommargin=3pt,
+  skipabove=3pt,skipbelow=3pt]{defbox}
+
+\newmdenv[linecolor=warnred,backgroundcolor=warnredbg,linewidth=1.5pt,
+  leftline=true,rightline=false,topline=false,bottomline=false,
+  innerleftmargin=7pt,innerrightmargin=6pt,
+  innertopmargin=3pt,innerbottommargin=3pt,
+  skipabove=3pt,skipbelow=3pt]{warnbox}
+
+\titleformat{\section}[block]{\normalsize\bfseries\color{headernavy}}{}{0pt}{}
+  [\vspace{1pt}\rule{\linewidth}{0.6pt}\vspace{2pt}]
+\titleformat{\subsection}[block]{\small\bfseries\color{keyblue}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{5pt}{2pt}
+\titlespacing*{\subsection}{0pt}{3pt}{1pt}
+
+\setlist{nosep, topsep=1pt, itemsep=1pt, leftmargin=1.3em}
+\parskip=2pt
+\parindent=0pt
+
+% ===========================================================================
+\begin{document}
+% ===========================================================================
+
+\begin{center}
+  {\large\bfseries\color{headernavy} Q7 \textemdash{} Discrete Event Simulation \& TrueTime}\\[1pt]
+  {\small MM8/9 $\cdot$ Hans-Peter Schwefel}
+\end{center}
+\vspace{1pt}\hrule height 1pt\vspace{5pt}
+
+DES models systems that change state only at discrete instants (events). State is piecewise constant.
+The goal: \textbf{simulate stochastic behaviour} and \textbf{estimate statistics} (mean delay, queue length, etc.) with confidence bounds.
+
+% ===========================================================================
+\section*{1\quad DES Core Theory}
+% ===========================================================================
+
+\subsection*{DES Taxonomy}
+A \textbf{Discrete Event System} has four defining properties:
+\begin{itemize}
+  \item \textbf{Event-driven} --- state changes only at event instants (not continuously)
+  \item \textbf{Discrete state space} $X$ --- countable states (e.g.\ queue length $\in \{0,1,2,\ldots\}$)
+  \item \textbf{Stochastic} --- event timing drawn from random distributions
+  \item \textbf{Continuous time} --- events can occur at any real-valued time $t \in \mathbb{R}$
+\end{itemize}
+
+\subsection*{Timed Automaton (TA) / Stochastic Timed Automaton (STA)}
+
+\begin{defbox}
+\textbf{STA is a 6-tuple:} $(E,\, X,\, \Gamma,\, p,\, p_0,\, G)$
+\begin{itemize}
+  \item $E$ --- finite set of \textbf{events}
+  \item $X$ --- finite set of \textbf{states}
+  \item $\Gamma: X \to 2^E$ --- \textbf{feasible events} function (which events can fire in state $x$)
+  \item $p(x', \tau \mid x, e)$ --- \textbf{transition probability}: joint distribution of next state $x'$ and sojourn time $\tau$
+  \item $p_0(x)$ --- \textbf{initial state} distribution
+  \item $G(x, e)$ --- \textbf{timer function}: distribution of time until event $e$ fires from state $x$
+\end{itemize}
+\end{defbox}
+
+\begin{notebox}
+State trajectory is \textbf{cadlag} (right-continuous, left-limit):
+$x(t)$ = constant between events; jumps at event instants; $x(t^-)$ = state just before jump.
+\end{notebox}
+
+\subsection*{Event List \& Cassandras Simulation Algorithm}
+
+The simulation maintains an \textbf{event list} (priority queue ordered by scheduled fire time).
+
+\begin{keybox}
+\textbf{Cassandras Algorithm --- 6 steps per event:}
+\begin{enumerate}
+  \item \textbf{Dequeue} the earliest event $e^*$ from the event list
+  \item \textbf{Update time}: $t \leftarrow t_{e^*}$ (advance clock to fire time)
+  \item \textbf{Update state}: $x \leftarrow f(x, e^*)$ (apply state transition)
+  \item \textbf{Delete infeasible}: remove events $e \notin \Gamma(x)$ from the event list
+  \item \textbf{Add feasible}: for each new $e \in \Gamma(x)$ schedule fire time using $G(x, e)$
+  \item \textbf{Reorder}: sort event list by fire time
+\end{enumerate}
+\end{keybox}
+
+\subsection*{Inverse Function Method (ICDF)}
+
+To draw a random sample from distribution $F$, given $u \sim \text{Uniform}[0,1]$:
+\[
+  T = F^{-1}(u)
+\]
+
+\begin{keybox}
+\textbf{Exponential distribution} with rate $\lambda$ (inter-arrival times, service times):
+\[
+  F(t) = 1 - e^{-\lambda t}
+  \quad\Rightarrow\quad
+  T = \frac{-\ln(1-u)}{\lambda}
+\]
+In code: \quad \texttt{u = rand(1);} \quad \texttt{T = -log(1-u)/lambda;}
+\end{keybox}
+
+\subsection*{Markov Model Taxonomy}
+
+\begin{defbox}
+\begin{itemize}
+  \item \textbf{GSMP} (Generalised Semi-Markov Process) --- multiple non-exponential timers active simultaneously; full STA
+  \item \textbf{SMP} (Semi-Markov Process) --- at most \textbf{one} non-exponential timer active at a time
+  \item \textbf{Markov Process (CTMC)} --- \textbf{all} timers exponential; memoryless; state alone determines future
+\end{itemize}
+\end{defbox}
+
+\begin{notebox}
+For a CTMC: $\{x(n)\}$ is a DTMC (the sequence of visited states). For a GSMP: $\{(x(n),\tau_n)\}$ is the DTMC --- you need the full timer vector $\tau_n$ to get the Markov property.
+\end{notebox}
+
+\subsection*{Composed State Spaces}
+
+For $N$ independent subsystems with state spaces $X_1, X_2, \ldots, X_N$:
+\[
+  X = X_1 \times X_2 \times \cdots \times X_N
+\]
+With a shared queue between nodes 1 and 2:
+\[
+  X = X_1 \times Q \times X_2
+\]
+
+\clearpage
+% ===========================================================================
+\section*{2\quad Output Analysis}
+% ===========================================================================
+
+\subsection*{Stochastic Simulation of CTMC/GSMP}
+
+Select $x(0) \in X$, then for $n = 1:N-1$ sample next state and timer:
+\[
+  P\!\left(x(n{+}1),\,\tau_{n+1}\,\big|\,x(n),\tau_n\right)
+\]
+Produces a random \textbf{piecewise-constant realisation} $\{x(t),\, t \in [t_A, t_B]\}$.
+
+Statistic of interest (fraction of time in set $A \subseteq X$):
+\[
+  \hat{P}_N(A) = \int_{t_A}^{t_B} I_{x(\tau)\in A}\,d\tau
+\]
+
+\subsection*{Transient vs.\ Stationary Behaviour}
+
+\begin{notebox}
+A simulation started from $x(0)$ has an \textbf{initial transient} before reaching statistical stationarity.
+Measurements taken during the transient are \textbf{biased} --- they depend on the starting state.
+After the transient the statistics stabilise (\textbf{stationary region}).
+\end{notebox}
+
+\subsection*{Restarted vs.\ Regenerative Simulation}
+
+\begin{keybox}
+\begin{tabular}{@{}p{0.47\linewidth}@{\quad}p{0.47\linewidth}@{}}
+\textbf{Restarted} & \textbf{Regenerative} \\[1pt]
+Run simulation $M$ times, each of length $N_{\text{res}}$ & Run once with long length $N_{\text{reg}} \gg N_{\text{res}}$ \\
+Each restart is \textbf{independent} $\Rightarrow$ easy statistics & One long run; batches defined by \textbf{revisits to state} $\bar{x}$ \\
+Good for \textbf{transient} statistics & Good for \textbf{long-term / stationary} statistics \\
+\end{tabular}
+\end{keybox}
+
+\subsection*{Regeneration \& Batch Statistics}
+
+For a DTMC $\{x(n)\}$, choose \textbf{regeneration state} $\bar{x}$ (visited frequently).
+Let $J = \{i \mid x(i) = \bar{x}\}$ and define cycle intervals $I_k = \{J_k,\ldots,J_{k+1}-1\}$.
+\medskip
+
+Per-cycle statistic: $s_k = S(x(J_k),\ldots,x(J_{k+1}-1))$
+
+The sequence $\{s_k\}$ is \textbf{i.i.d.} --- enabling simple mean/variance estimation.
+
+\begin{defbox}
+\textbf{Batch mean estimator} (N events total, broken into batches $B_n$):
+\[
+  S_N = \frac{1}{N}\sum_{j=0}^{N-1} f(x_j)
+      = \frac{1}{N}\sum_n B_n
+  \qquad
+  \text{var}(S_N) = \frac{1}{N}\,\text{var}(B_n)
+  \qquad
+  \hat{V}_B = \frac{1}{N}\sum_n (B_n - S_N)^2
+\]
+\begin{itemize}
+  \item \textbf{Average state}: $f(x) = x$ \quad or time-weighted: $f(T,x) = T\cdot x$
+  \item \textbf{Frequency of occurrence}: $f(x) = I_{x\in A}$ \quad time-fraction: $f(T,x) = T\cdot I_{x\in A}$
+\end{itemize}
+\end{defbox}
+
+\subsection*{Confidence Interval}
+
+By the Central Limit Theorem (CLT) the sum $S_N$ is approximately normal for large $N$.
+\[
+  \text{95\% CI:}\quad \hat{\mu} \pm 2\,\hat{\sigma}
+  \qquad\text{where}\quad \hat{\sigma} = \sqrt{\hat{V}_B/N}
+\]
+
+\begin{warnbox}
+$2\sigma$ gives a \textbf{two-sided 95\%} confidence interval (CLT; $\approx 13.6+34.1+34.1+13.6 = 95.4\%$).
+To tighten CI: increase $N$ (more batches/restarts) since $\hat{\sigma} \propto 1/\sqrt{N}$.
+\end{warnbox}
+
+\subsection*{Choosing the Regeneration State $\bar{x}$}
+
+\begin{tabular}{@{}l l@{}}
+\toprule
+Queue type & Regeneration state \\\midrule
+M/M/1 & Any queue length (memoryless both directions) \\
+M/G/1 & Any state \textbf{after a departure} (general service timer restarted) \\
+G/M/1 & Any state \textbf{after an arrival} (general arrival timer restarted) \\
+G/G/1 & State $\bar{x}=1$ after arrival (both timers reset at that moment) \\
+\bottomrule
+\end{tabular}
+
+% ===========================================================================
+\section*{3\quad Exercise --- CANsimple (TrueTime Regenerative Simulation)}
+% ===========================================================================
+
+\textbf{System:} CAN bus with two nodes. Node~1 generates packets with exponential inter-arrival times (rate $\lambda$). A high-priority node injects competing traffic. Node~2 receives and measures end-to-end delay.
+
+\textbf{Goal:} Estimate mean packet delay using \textbf{regenerative simulation} with confidence bounds.
+
+\subsection*{Simulink / TrueTime File Structure}
+
+\begin{tabular}{@{}l l@{}}
+\toprule
+File & Role \\\midrule
+\texttt{CANsimple.slx} & Simulink model (TrueTime kernel, CAN network, scope) \\
+\texttt{generator\_code.m} & Node 1 task: generates packets, implements inverse-CDF arrivals \\
+\texttt{highprio\_code.m} & High-priority node task: competing Poisson traffic \\
+\texttt{send\_queue\_task.m} & Sender task: dequeues and transmits packets periodically \\
+\texttt{receiver\_code.m} & Node 2 task: measures delay, detects regeneration state \\
+\texttt{regen\_analysis.m} & Post-simulation script: computes mean, std, 95\% CI \\
+\bottomrule
+\end{tabular}
+
+\subsection*{Key Code Patterns}
+
+\begin{keybox}
+\textbf{generator\_code.m} --- Poisson arrivals via inverse function method:
+\begin{verbatim}
+u = rand();
+T = -log(1-u) / data.lambda;   % exponential inter-arrival (ICDF)
+ttCreateJob('generator_task', ttCurrentTime + T);
+\end{verbatim}
+Each call also stamps \texttt{msg.ttime = ttCurrentTime} and records \texttt{msg.cycle = currentCycle}.
+\end{keybox}
+
+\begin{keybox}
+\textbf{receiver\_code.m} --- measures delay and detects regeneration:
+\begin{verbatim}
+delay = ttCurrentTime - msg(1).ttime;   % end-to-end delay
+regen.sum(c)   = regen.sum(c)   + delay;
+regen.count(c) = regen.count(c) + 1;
+
+% Regeneration: queue empty AND no packet in flight
+if isempty(msgQueue) && origInFlight == 0
+    regen.mean(end+1) = regen.sum(c) / regen.count(c);
+    currentCycle = currentCycle + 1;
+end
+\end{verbatim}
+\textbf{Regeneration state} $\bar{x}$: queue empty \textbf{and} no packet in transit.
+This is equivalent to M/G/1 ``after departure'' state --- all timers reset.
+\end{keybox}
+
+\begin{keybox}
+\textbf{regen\_analysis.m} --- post-simulation statistics:
+\begin{verbatim}
+cycleMeans = regen.mean;                  % mean delay per cycle
+warmupCycles = 5;                         % discard initial transient
+cycleMeansUsed = cycleMeans(warmupCycles+1:end);
+
+meanDelay  = mean(cycleMeansUsed);
+stdCycles  = std(cycleMeansUsed);
+stdEstimate = stdCycles / sqrt(n);        % std of mean estimate
+ciLow  = meanDelay - 2*stdEstimate;       % 95% CI lower bound
+ciHigh = meanDelay + 2*stdEstimate;       % 95% CI upper bound
+\end{verbatim}
+\end{keybox}
+
+\subsection*{What \texttt{origInFlight} Does}
+
+\begin{notebox}
+A regeneration cycle can only close when the system is truly empty:
+\begin{itemize}
+  \item \texttt{msgQueue} empty --- no packets waiting to be sent
+  \item \texttt{origInFlight == 0} --- no packet submitted to CAN but not yet received
+\end{itemize}
+Both conditions needed; otherwise a cycle would close while a packet is still travelling on the bus, giving an incorrect (incomplete) cycle statistic.
+\end{notebox}
+
+\subsection*{Restarted vs.\ Regenerative in This Exercise}
+
+\begin{tabular}{@{}p{0.47\linewidth}@{\quad}p{0.47\linewidth}@{}}
+\toprule
+\textbf{Restarted (not used here)} & \textbf{Regenerative (used here)} \\\midrule
+\texttt{sim('CANsimple', N)} called $M$ times & \texttt{sim('CANsimple', 200)} called once \\
+Each run fully independent & Batches split by $Q=0$ \& in-flight$=0$ revisits \\
+\texttt{SimData\{i\}(end,1)} = final counter & \texttt{regen.mean(k)} = mean delay of cycle $k$ \\
+Variance: \texttt{(SimData\{i\}(end,1) - m)\^{}2/M} & Variance: \texttt{std(cycleMeans)\^{}2/n} \\
+\bottomrule
+\end{tabular}
+
+\subsection*{Summary: Full Simulation Workflow}
+
+\begin{enumerate}
+  \item TrueTime kernel starts; \texttt{generator\_code} fires at $t=0$, schedules next job via inverse-CDF.
+  \item Each generated packet is pushed onto \texttt{msgQueue} with timestamp and cycle number.
+  \item \texttt{send\_queue\_task} dequeues one packet per period and calls \texttt{ttSendMsg}; increments \texttt{origInFlight}.
+  \item High-priority node also injects competing packets; these do \textbf{not} carry cycle info.
+  \item \texttt{receiver\_code} receives each packet; for source~1 packets: computes delay, accumulates cycle sum.
+  \item When \texttt{msgQueue} empty \textbf{and} \texttt{origInFlight}$=0$: close cycle, record \texttt{regen.mean}, increment \texttt{currentCycle}.
+  \item After simulation: \texttt{regen\_analysis.m} discards warm-up cycles, computes mean $\pm 2\sigma$ CI.
+\end{enumerate}
+
+\end{document}

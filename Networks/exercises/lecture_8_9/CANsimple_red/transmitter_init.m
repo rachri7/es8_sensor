@@ -1,0 +1,52 @@
+function transmitter_init
+
+% Queue for original node packets
+global msgQueue
+
+%%%%%%%%%%%%%%%%% New part, plus priority later %%%%%%%%%%%%%%%
+%  Variables for regenerative simulation
+global regen currentCycle originalSeq
+global origInFlight
+
+
+% Initialize packet queue
+msgQueue = struct('ttime', {}, ...
+                  'payload', {}, ...
+                  'source', {}, ...
+                  'cycle', {}, ...
+                  'lastInCycle', {}, ...
+                  'seq', {});
+
+% Initialize regenerative simulation data
+currentCycle = 1;
+originalSeq = 0;
+origInFlight = 0;
+
+regen.sum = [];
+regen.count = [];
+regen.mean = [];
+regen.allDelays = [];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Initialize TrueTime kernel
+ttInitKernel('prioFP');
+
+% Parameters for original node
+data.lambda = 2;          % random generation rate [packets/s]
+% These below should match highprio_init.m
+data.sendPeriod = 0.035;   % periodic sender period [s]
+data.packetLength = 250;   % packet length [bits]
+
+% Important:
+% Original node gets lower priority than new high-priority node.
+% In CAN/TrueTime, lower priority number means higher priority.
+data.priority = 2;
+
+% Random packet generator task
+ttCreateTask('generator_task', 1, 'generator_code', data);
+ttCreateJob('generator_task', ttCurrentTime);
+
+% Periodic sender task
+ttCreateTask('send_queue_task', 1, 'send_queue_task', data);
+ttCreateJob('send_queue_task', ttCurrentTime + 0.2);
